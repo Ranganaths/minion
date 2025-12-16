@@ -1,4 +1,4 @@
-module github.com/yourusername/minion
+module github.com/Ranganaths/minion
 
 go 1.24.0
 
