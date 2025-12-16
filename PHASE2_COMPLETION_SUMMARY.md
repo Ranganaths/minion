@@ -451,8 +451,8 @@ import (
     "context"
     "log"
 
-    "github.com/agentql/agentql/pkg/minion/config"
-    "github.com/agentql/agentql/pkg/minion/observability"
+    "github.com/ranganaths/minion/config"
+    "github.com/ranganaths/minion/observability"
 )
 
 func main() {

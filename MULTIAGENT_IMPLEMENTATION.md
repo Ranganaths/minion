@@ -213,7 +213,7 @@ func (c *Coordinator) Shutdown(ctx context.Context) error
 === RUN   TestTaskLedger_Concurrency
 --- PASS: TestTaskLedger_Concurrency (0.00s)
 PASS
-ok  	github.com/agentql/agentql/pkg/minion/core/multiagent	0.759s
+ok  	github.com/ranganaths/minion/core/multiagent	0.759s
 ```
 
 ## Examples

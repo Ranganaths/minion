@@ -452,8 +452,8 @@ package main
 
 import (
     "context"
-    "github.com/agentql/agentql/pkg/minion/core/multiagent"
-    "github.com/agentql/agentql/pkg/minion/observability"
+    "github.com/ranganaths/minion/core/multiagent"
+    "github.com/ranganaths/minion/observability"
 )
 
 func main() {
