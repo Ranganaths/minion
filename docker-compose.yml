@@ -1,0 +1,141 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database with pgvector
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: minion-postgres
+    environment:
+      POSTGRES_DB: minion
+      POSTGRES_USER: minion
+      POSTGRES_PASSWORD: minion_secret
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U minion"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - minion-network
+
+  # Jaeger - Distributed Tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: minion-jaeger
+    environment:
+      COLLECTOR_ZIPKIN_HOST_PORT: :9411
+      COLLECTOR_OTLP_ENABLED: true
+    ports:
+      - "5775:5775/udp"   # Zipkin compact
+      - "6831:6831/udp"   # Jaeger compact
+      - "6832:6832/udp"   # Jaeger binary
+      - "5778:5778"       # Configs
+      - "16686:16686"     # UI
+      - "14268:14268"     # Collector HTTP
+      - "14250:14250"     # Collector gRPC
+      - "9411:9411"       # Zipkin
+      - "4317:4317"       # OTLP gRPC
+      - "4318:4318"       # OTLP HTTP
+    networks:
+      - minion-network
+
+  # Prometheus - Metrics Collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: minion-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - minion-network
+    depends_on:
+      - postgres
+
+  # Grafana - Visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: minion-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - minion-network
+    depends_on:
+      - prometheus
+      - postgres
+
+  # PgAdmin - PostgreSQL Management (Optional)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: minion-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@minion.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - minion-network
+    depends_on:
+      - postgres
+    profiles:
+      - tools  # Only start with: docker-compose --profile tools up
+
+  # Redis - Caching (for future use)
+  redis:
+    image: redis:7-alpine
+    container_name: minion-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - minion-network
+    profiles:
+      - full  # Only start with: docker-compose --profile full up
+
+volumes:
+  postgres_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  minion-network:
+    driver: bridge

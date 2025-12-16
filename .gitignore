@@ -1,0 +1,70 @@
+# Binaries
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+minion
+
+# Test artifacts
+*.test
+*.out
+coverage.out
+coverage.html
+*.prof
+
+# Go workspace file
+go.work
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Dependencies
+vendor/
+
+# Build artifacts
+dist/
+build/
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker
+docker-compose.override.yml
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# OS
+Thumbs.db
+.directory
+
+# Prometheus
+prometheus_data/
+
+# Grafana
+grafana_data/
+
+# Jaeger
+jaeger_data/

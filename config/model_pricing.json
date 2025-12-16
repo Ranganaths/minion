@@ -1,0 +1,51 @@
+[
+  {
+    "provider": "openai",
+    "model": "gpt-4-turbo-preview",
+    "prompt_price_per_1k": 0.01,
+    "completion_price_per_1k": 0.03,
+    "last_updated": "2024-01-01"
+  },
+  {
+    "provider": "openai",
+    "model": "gpt-4",
+    "prompt_price_per_1k": 0.03,
+    "completion_price_per_1k": 0.06,
+    "last_updated": "2024-01-01"
+  },
+  {
+    "provider": "openai",
+    "model": "gpt-3.5-turbo",
+    "prompt_price_per_1k": 0.0015,
+    "completion_price_per_1k": 0.002,
+    "last_updated": "2024-01-01"
+  },
+  {
+    "provider": "anthropic",
+    "model": "claude-3-opus",
+    "prompt_price_per_1k": 0.015,
+    "completion_price_per_1k": 0.075,
+    "last_updated": "2024-01-01"
+  },
+  {
+    "provider": "anthropic",
+    "model": "claude-3-sonnet",
+    "prompt_price_per_1k": 0.003,
+    "completion_price_per_1k": 0.015,
+    "last_updated": "2024-01-01"
+  },
+  {
+    "provider": "anthropic",
+    "model": "claude-3-haiku",
+    "prompt_price_per_1k": 0.00025,
+    "completion_price_per_1k": 0.00125,
+    "last_updated": "2024-01-01"
+  },
+  {
+    "provider": "gemini",
+    "model": "gemini-pro",
+    "prompt_price_per_1k": 0.00025,
+    "completion_price_per_1k": 0.0005,
+    "last_updated": "2024-01-01"
+  }
+]
