@@ -33,7 +33,7 @@ Originally built for AgentQL's semantic layer, Minion is now a standalone framew
 ## 📦 Installation
 
 ```bash
-go get github.com/agentql/agentql/pkg/minion
+go get github.com/ranganaths/minion
 ```
 
 ## 🚀 Quick Start
@@ -49,10 +49,10 @@ import (
     "log"
     "os"
 
-    "github.com/agentql/agentql/pkg/minion/core"
-    "github.com/agentql/agentql/pkg/minion/models"
-    "github.com/agentql/agentql/pkg/minion/storage"
-    "github.com/agentql/agentql/pkg/minion/llm"
+    "github.com/ranganaths/minion/core"
+    "github.com/ranganaths/minion/models"
+    "github.com/ranganaths/minion/storage"
+    "github.com/ranganaths/minion/llm"
 )
 
 func main() {
@@ -228,7 +228,7 @@ for _, activity := range activities {
 ### OpenAI
 
 ```go
-import "github.com/agentql/agentql/pkg/minion/llm"
+import "github.com/ranganaths/minion/llm"
 
 provider := llm.NewOpenAI(apiKey)
 framework := core.NewFramework(
@@ -293,7 +293,7 @@ Check out the `examples/` directory:
 Run an example:
 
 ```bash
-cd pkg/minion/examples/basic
+cd minion/examples/basic
 export OPENAI_API_KEY="your-key"
 go run main.go
 ```
@@ -357,37 +357,6 @@ func TestMinion(t *testing.T) {
 }
 ```
 
-## 🤝 Integration with AgentQL
-
-Minion powers AgentQL's agent system. To use Minion with AgentQL:
-
-```go
-import (
-    "github.com/agentql/agentql/internal/agentql"
-    "github.com/agentql/agentql/pkg/minion/core"
-    "github.com/agentql/agentql/pkg/minion/storage"
-    "github.com/agentql/agentql/pkg/minion/llm"
-)
-
-// Initialize Minion
-framework := core.NewFramework(
-    core.WithStorage(storage.NewInMemory()),
-    core.WithLLMProvider(llm.NewOpenAI(apiKey)),
-)
-
-// Register AgentQL-specific behaviors (SQL generation, etc.)
-agentql.RegisterAllBehaviors(framework)
-
-// Create AgentQL adapter
-adapter := agentql.NewAdapter(framework)
-
-// Use with AgentQL models
-agent, _ := adapter.CreateAgent(ctx, &models.CreateAgentRequest{
-    Domain: models.DomainSales,
-    Type:   models.TypeAnalytical,
-    // ... AgentQL-specific config
-})
-```
 
 ## 🤝 Multi-Agent System (NEW!)
 
