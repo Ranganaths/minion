@@ -6,7 +6,7 @@ import (
 	"math"
 	"sort"
 
-	"github.com/agentql/agentql/pkg/minion/models"
+	"github.com/yourusername/minion/models"
 )
 
 // CampaignROICalculatorTool calculates campaign ROI and ROAS

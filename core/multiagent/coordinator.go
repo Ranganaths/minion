@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/agentql/agentql/pkg/minion/observability"
+	"github.com/yourusername/minion/observability"
 	"github.com/google/uuid"
 )
 

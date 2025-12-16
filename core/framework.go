@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/agentql/agentql/pkg/minion/llm"
-	"github.com/agentql/agentql/pkg/minion/models"
-	"github.com/agentql/agentql/pkg/minion/storage"
-	"github.com/agentql/agentql/pkg/minion/tools"
+	"github.com/yourusername/minion/llm"
+	"github.com/yourusername/minion/models"
+	"github.com/yourusername/minion/storage"
+	"github.com/yourusername/minion/tools"
 	"github.com/google/uuid"
 )
 

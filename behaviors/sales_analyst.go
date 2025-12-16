@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/agentql/agentql/pkg/minion/models"
+	"github.com/yourusername/minion/models"
 )
 
 // SalesAnalystBehavior provides integrated sales analysis with SQL generation,
@@ -23,7 +23,7 @@ func NewSalesAnalystBehavior() *SalesAnalystBehavior {
 }
 
 func (b *SalesAnalystBehavior) GetSystemPrompt(agent *models.Agent) string {
-	return fmt.Sprintf(`You are %s, an expert Sales Analyst Agent powered by AgentQL.
+	return fmt.Sprintf(`You are %s, an expert Sales Analyst Agent.
 
 **Your Role**: You help analyze sales data through natural language queries. You can:
 1. Generate SQL queries for the sales semantic layer

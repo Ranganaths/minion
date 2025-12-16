@@ -3,7 +3,7 @@ package storage
 import (
 	"context"
 
-	"github.com/agentql/agentql/pkg/minion/models"
+	"github.com/yourusername/minion/models"
 )
 
 // AgentStore defines the interface for agent persistence

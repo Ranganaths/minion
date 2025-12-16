@@ -3,7 +3,7 @@ package core
 import (
 	"context"
 
-	"github.com/agentql/agentql/pkg/minion/models"
+	"github.com/yourusername/minion/models"
 )
 
 // AgentExecutor defines the interface for agent execution

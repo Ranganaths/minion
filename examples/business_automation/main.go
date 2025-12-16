@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/agentql/agentql/pkg/minion/core/multiagent"
-	"github.com/agentql/agentql/pkg/minion/llm"
+	"github.com/yourusername/minion/core/multiagent"
+	"github.com/yourusername/minion/llm"
 )
 
 func main() {

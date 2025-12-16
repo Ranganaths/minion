@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/agentql/agentql/pkg/minion/models"
+	"github.com/yourusername/minion/models"
 )
 
 // ChartType represents different types of charts

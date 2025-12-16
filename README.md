@@ -16,7 +16,7 @@ Minion is a complete system for creating, managing, and executing AI agents. It 
 - **Production Ready** - Thread-safe, observable, and battle-tested patterns
 - **Framework Agnostic** - Use standalone or integrate with existing systems
 
-Originally built for AgentQL's semantic layer, Minion is now a standalone framework that can be used in any Go project.
+Minion is a standalone framework that can be used in any Go project for building multi-agent AI systems.
 
 ## ✨ Features
 
@@ -33,7 +33,7 @@ Originally built for AgentQL's semantic layer, Minion is now a standalone framew
 ## 📦 Installation
 
 ```bash
-go get github.com/agentql/agentql/pkg/minion
+go get github.com/yourusername/minion
 ```
 
 ## 🚀 Quick Start
@@ -49,10 +49,10 @@ import (
     "log"
     "os"
 
-    "github.com/agentql/agentql/pkg/minion/core"
-    "github.com/agentql/agentql/pkg/minion/models"
-    "github.com/agentql/agentql/pkg/minion/storage"
-    "github.com/agentql/agentql/pkg/minion/llm"
+    "github.com/yourusername/minion/core"
+    "github.com/yourusername/minion/models"
+    "github.com/yourusername/minion/storage"
+    "github.com/yourusername/minion/llm"
 )
 
 func main() {
@@ -228,7 +228,7 @@ for _, activity := range activities {
 ### OpenAI
 
 ```go
-import "github.com/agentql/agentql/pkg/minion/llm"
+import "github.com/yourusername/minion/llm"
 
 provider := llm.NewOpenAI(apiKey)
 framework := core.NewFramework(
@@ -260,7 +260,7 @@ framework := core.NewFramework(
 ### In-Memory (Development)
 
 ```go
-import "github.com/agentql/agentql/pkg/minion/storage"
+import "github.com/yourusername/minion/storage"
 
 store := storage.NewInMemory()
 framework := core.NewFramework(core.WithStorage(store))
@@ -357,37 +357,9 @@ func TestMinion(t *testing.T) {
 }
 ```
 
-## 🤝 Integration with AgentQL
+## 🎯 Use Cases
 
-Minion powers AgentQL's agent system. To use Minion with AgentQL:
-
-```go
-import (
-    "github.com/agentql/agentql/internal/agentql"
-    "github.com/agentql/agentql/pkg/minion/core"
-    "github.com/agentql/agentql/pkg/minion/storage"
-    "github.com/agentql/agentql/pkg/minion/llm"
-)
-
-// Initialize Minion
-framework := core.NewFramework(
-    core.WithStorage(storage.NewInMemory()),
-    core.WithLLMProvider(llm.NewOpenAI(apiKey)),
-)
-
-// Register AgentQL-specific behaviors (SQL generation, etc.)
-agentql.RegisterAllBehaviors(framework)
-
-// Create AgentQL adapter
-adapter := agentql.NewAdapter(framework)
-
-// Use with AgentQL models
-agent, _ := adapter.CreateAgent(ctx, &models.CreateAgentRequest{
-    Domain: models.DomainSales,
-    Type:   models.TypeAnalytical,
-    // ... AgentQL-specific config
-})
-```
+Minion can be used for various AI agent applications:
 
 ## 🤝 Multi-Agent System (NEW!)
 
@@ -434,18 +406,12 @@ result, err := coordinator.ExecuteTask(ctx, &multiagent.TaskRequest{
 
 MIT License - see LICENSE file for details
 
-## 🙏 Acknowledgments
-
-Minion was originally developed as part of the [AgentQL](https://github.com/agentql/agentql) project and extracted into a standalone framework for broader use.
-
 ## 📞 Support
 
 - **Documentation**: Check the `examples/` directory and inline code comments
-- **Issues**: [GitHub Issues](https://github.com/agentql/agentql/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/agentql/agentql/discussions)
+- **Issues**: [GitHub Issues](https://github.com/yourusername/minion/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/yourusername/minion/discussions)
 
 ---
-
-**Built with ❤️ by the AgentQL team**
 
 *Minion - Your loyal AI agent framework*

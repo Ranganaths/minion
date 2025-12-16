@@ -2,7 +2,7 @@ package models
 
 import "time"
 
-// Agent represents a framework agent (generic, not AgentQL-specific)
+// Agent represents a Minion framework agent
 type Agent struct {
 	ID           string                 `json:"id"`
 	Name         string                 `json:"name"`

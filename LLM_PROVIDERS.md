@@ -114,7 +114,7 @@ import (
     "log"
     "os"
 
-    "github.com/agentql/agentql/pkg/minion/llm"
+    "github.com/yourusername/minion/llm"
 )
 
 func main() {
@@ -167,8 +167,8 @@ package main
 import (
     "context"
 
-    "github.com/agentql/agentql/pkg/minion/core/multiagent"
-    "github.com/agentql/agentql/pkg/minion/llm"
+    "github.com/yourusername/minion/core/multiagent"
+    "github.com/yourusername/minion/llm"
 )
 
 func main() {
@@ -266,7 +266,7 @@ import (
     "context"
     "testing"
 
-    "github.com/agentql/agentql/pkg/minion/llm"
+    "github.com/yourusername/minion/llm"
 )
 
 func TestYourProvider(t *testing.T) {
@@ -304,7 +304,7 @@ import (
     "log"
     "os"
 
-    "github.com/agentql/agentql/pkg/minion/llm"
+    "github.com/yourusername/minion/llm"
 )
 
 func main() {
@@ -1357,8 +1357,8 @@ import (
     "context"
     "os"
 
-    "github.com/agentql/agentql/pkg/minion/core/multiagent"
-    "github.com/agentql/agentql/pkg/minion/llm"
+    "github.com/yourusername/minion/core/multiagent"
+    "github.com/yourusername/minion/llm"
 )
 
 func main() {

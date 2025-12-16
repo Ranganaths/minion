@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/agentql/agentql/pkg/minion/models"
+	"github.com/yourusername/minion/models"
 )
 
 var (

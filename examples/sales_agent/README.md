@@ -1,13 +1,13 @@
-# Sales Analyst Agent with AgentQL Integration
+# Sales Analyst Agent Example
 
-This example demonstrates a complete Sales Analyst Agent that can query the AgentQL semantic layer and create visualizations.
+This example demonstrates a complete Sales Analyst Agent that can analyze sales data and create visualizations.
 
 ## Overview
 
 The Sales Analyst Agent combines three powerful capabilities:
 
-1. **SQL Query Generation** - Converts natural language to SQL queries
-2. **Query Execution** - Executes queries against the semantic layer
+1. **Data Analysis** - Analyzes sales metrics and trends
+2. **Query Processing** - Processes data queries and requests
 3. **Data Visualization** - Creates charts, graphs, and tables
 
 ## Features
@@ -46,7 +46,7 @@ The Sales Analyst Agent combines three powerful capabilities:
 
 - Go 1.21+
 - OpenAI API key
-- PostgreSQL database (for real AgentQL integration)
+- PostgreSQL database (optional)
 
 ## Setup
 
@@ -55,9 +55,9 @@ The Sales Analyst Agent combines three powerful capabilities:
 export OPENAI_API_KEY="your-api-key-here"
 ```
 
-2. (Optional) Configure database connection for real queries:
+2. (Optional) Configure database connection for data queries:
 ```bash
-export DATABASE_URL="postgresql://user:pass@localhost:5432/agentql"
+export DATABASE_URL="postgresql://user:pass@localhost:5432/sales_db"
 ```
 
 3. Run the example:
@@ -72,9 +72,9 @@ go run main.go
 
 ```go
 import (
-    "github.com/agentql/agentql/pkg/minion/behaviors"
-    "github.com/agentql/agentql/pkg/minion/core"
-    "github.com/agentql/agentql/pkg/minion/tools/visualization"
+    "github.com/yourusername/minion/behaviors"
+    "github.com/yourusername/minion/core"
+    "github.com/yourusername/minion/tools/visualization"
 )
 
 // Initialize framework
@@ -200,7 +200,7 @@ The example includes 4 complete scenarios:
 ## Expected Output
 
 ```
-=== AgentQL Sales Analyst Agent Demo ===
+=== Sales Analyst Agent Demo ===
 
 ✅ Created Sales Analyst Agent: Sales Intelligence Agent (ID: abc123)
 
@@ -285,22 +285,21 @@ Sales Agent Workflow:
    - Suggest next steps
 ```
 
-## Integration with AgentQL
+## Database Integration
 
 ### With Real Database
 
 ```go
 import (
     "database/sql"
-    "github.com/agentql/agentql/pkg/minion/tools/agentql"
 )
 
 // Connect to database
 db, _ := sql.Open("postgres", os.Getenv("DATABASE_URL"))
 
-// Create SQL executor tool
-sqlExecutor := agentql.NewSQLExecutorTool(db)
-framework.RegisterTool(sqlExecutor)
+// Create SQL executor tool for data queries
+// Register custom tools that can query your database
+framework.RegisterTool(customSQLTool)
 
 // Now agent can execute real queries
 input := &models.Input{
@@ -474,6 +473,5 @@ func (b *CustomSalesBehavior) ProcessInput(ctx context.Context, agent *models.Ag
 ## Learn More
 
 - [Minion Framework Documentation](../../README.md)
-- [AgentQL Integration Guide](../../../../MINION_INTEGRATION.md)
 - [Visualization Tools](../../tools/visualization/)
 - [Sales Analyst Behavior](../../behaviors/sales_analyst.go)

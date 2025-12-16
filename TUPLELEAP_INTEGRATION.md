@@ -106,7 +106,7 @@ import (
     "fmt"
     "os"
 
-    "github.com/agentql/agentql/pkg/minion/llm"
+    "github.com/yourusername/minion/llm"
 )
 
 func main() {

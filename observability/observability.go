@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/agentql/agentql/pkg/minion/config"
+	"github.com/yourusername/minion/config"
 )
 
 // Observability is the main interface for the observability stack

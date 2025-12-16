@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/agentql/agentql/pkg/minion/observability"
+	"github.com/yourusername/minion/observability"
 )
 
 // ScalingAction defines the type of scaling action

@@ -6,10 +6,10 @@ import (
 	"log"
 	"os"
 
-	"github.com/agentql/agentql/pkg/minion/core"
-	"github.com/agentql/agentql/pkg/minion/llm"
-	"github.com/agentql/agentql/pkg/minion/models"
-	"github.com/agentql/agentql/pkg/minion/storage"
+	"github.com/yourusername/minion/core"
+	"github.com/yourusername/minion/llm"
+	"github.com/yourusername/minion/models"
+	"github.com/yourusername/minion/storage"
 )
 
 func main() {

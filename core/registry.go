@@ -3,8 +3,8 @@ package core
 import (
 	"context"
 
-	"github.com/agentql/agentql/pkg/minion/models"
-	"github.com/agentql/agentql/pkg/minion/storage"
+	"github.com/yourusername/minion/models"
+	"github.com/yourusername/minion/storage"
 )
 
 // AgentRegistryImpl implements the AgentRegistry interface

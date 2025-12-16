@@ -3,7 +3,7 @@ package tools
 import (
 	"context"
 
-	"github.com/agentql/agentql/pkg/minion/models"
+	"github.com/yourusername/minion/models"
 )
 
 // Tool defines the interface for agent tools

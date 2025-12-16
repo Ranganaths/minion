@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/agentql/agentql/pkg/minion/observability"
+	"github.com/yourusername/minion/observability"
 )
 
 // LoadBalancerStrategy defines the load balancing strategy

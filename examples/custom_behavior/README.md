@@ -24,7 +24,7 @@ export OPENAI_API_KEY="your-api-key-here"
 ## Running the Example
 
 ```bash
-cd pkg/agentframework/examples/custom_behavior
+cd examples/custom_behavior
 go run main.go
 ```
 
@@ -259,5 +259,5 @@ Behaviors can access:
 
 - Combine custom behaviors with custom tools
 - Create behavior hierarchies (behaviors that wrap other behaviors)
-- Explore the AgentQL adapter for SQL-specific behaviors
-- Review `pkg/agentframework/README.md` for more details
+- Explore specialized domain-specific behaviors
+- Review the main README.md for more details

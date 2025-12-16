@@ -1,10 +1,10 @@
 package domains
 
 import (
-	"github.com/agentql/agentql/pkg/minion/core"
-	"github.com/agentql/agentql/pkg/minion/tools"
-	"github.com/agentql/agentql/pkg/minion/tools/domains/marketing"
-	"github.com/agentql/agentql/pkg/minion/tools/domains/sales"
+	"github.com/yourusername/minion/core"
+	"github.com/yourusername/minion/tools"
+	"github.com/yourusername/minion/tools/domains/marketing"
+	"github.com/yourusername/minion/tools/domains/sales"
 )
 
 // RegisterAllDomainTools registers all domain-specific tools with the framework

@@ -333,5 +333,4 @@ Tools are organized by business domain:
 ## Learn More
 
 - [Minion Framework Documentation](../../README.md)
-- [AgentQL Integration Guide](../../../../MINION_INTEGRATION.md)
-- [Adding New Tools Guide](../../../../ADDING_NEW_TOOLS.md)
+- [Tools Documentation](../../tools/)
