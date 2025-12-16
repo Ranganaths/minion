@@ -33,7 +33,7 @@ Minion is a standalone framework that can be used in any Go project for building
 ## 📦 Installation
 
 ```bash
-go get github.com/yourusername/minion
+go get github.com/ranganaths/minion
 ```
 
 ## 🚀 Quick Start
@@ -49,10 +49,10 @@ import (
     "log"
     "os"
 
-    "github.com/yourusername/minion/core"
-    "github.com/yourusername/minion/models"
-    "github.com/yourusername/minion/storage"
-    "github.com/yourusername/minion/llm"
+    "github.com/ranganaths/minion/core"
+    "github.com/ranganaths/minion/models"
+    "github.com/ranganaths/minion/storage"
+    "github.com/ranganaths/minion/llm"
 )
 
 func main() {
@@ -228,7 +228,7 @@ for _, activity := range activities {
 ### OpenAI
 
 ```go
-import "github.com/yourusername/minion/llm"
+import "github.com/ranganaths/minion/llm"
 
 provider := llm.NewOpenAI(apiKey)
 framework := core.NewFramework(
@@ -293,7 +293,7 @@ Check out the `examples/` directory:
 Run an example:
 
 ```bash
-cd pkg/minion/examples/basic
+cd minion/examples/basic
 export OPENAI_API_KEY="your-key"
 go run main.go
 ```
@@ -357,9 +357,6 @@ func TestMinion(t *testing.T) {
 }
 ```
 
-## 🎯 Use Cases
-
-Minion can be used for various AI agent applications:
 
 ## 🤝 Multi-Agent System (NEW!)
 
