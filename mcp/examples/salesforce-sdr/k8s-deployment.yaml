@@ -1,0 +1,304 @@
+---
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: virtual-sdr
+
+---
+# ConfigMap for application configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sdr-config
+  namespace: virtual-sdr
+data:
+  SDR_NAME: "Alex the AI SDR"
+  WORKFLOW_INTERVAL: "24h"
+  METRICS_PORT: "9090"
+  POOL_MAX_OPEN_CONNS: "20"
+  POOL_MAX_IDLE_CONNS: "10"
+  CACHE_TTL: "10m"
+  CACHE_MAX_SIZE: "100"
+  CACHE_EVICTION_POLICY: "lru"
+  CB_MAX_FAILURES: "3"
+  CB_TIMEOUT: "30s"
+  CB_FAILURE_RATE_THRESHOLD: "50.0"
+
+---
+# Secret for Salesforce credentials
+apiVersion: v1
+kind: Secret
+metadata:
+  name: salesforce-creds
+  namespace: virtual-sdr
+type: Opaque
+stringData:
+  instance-url: "https://your-instance.salesforce.com"
+  client-id: "your_client_id_here"
+  client-secret: "your_client_secret_here"
+  username: "your_email@company.com"
+  password: "your_password_and_token"
+
+---
+# Secret for Gmail credentials
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gmail-creds
+  namespace: virtual-sdr
+type: Opaque
+data:
+  credentials.json: |
+    # Base64 encoded Gmail credentials JSON
+
+---
+# Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: virtual-sdr
+  namespace: virtual-sdr
+  labels:
+    app: virtual-sdr
+    version: v1
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: virtual-sdr
+  template:
+    metadata:
+      labels:
+        app: virtual-sdr
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: virtual-sdr
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+
+      containers:
+      - name: virtual-sdr
+        image: virtual-sdr:latest
+        imagePullPolicy: Always
+
+        ports:
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+
+        env:
+        # Salesforce credentials from secret
+        - name: SALESFORCE_INSTANCE_URL
+          valueFrom:
+            secretKeyRef:
+              name: salesforce-creds
+              key: instance-url
+        - name: SALESFORCE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: salesforce-creds
+              key: client-id
+        - name: SALESFORCE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: salesforce-creds
+              key: client-secret
+        - name: SALESFORCE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: salesforce-creds
+              key: username
+        - name: SALESFORCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: salesforce-creds
+              key: password
+
+        # Configuration from ConfigMap
+        - name: SDR_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: sdr-config
+              key: SDR_NAME
+        - name: POOL_MAX_OPEN_CONNS
+          valueFrom:
+            configMapKeyRef:
+              name: sdr-config
+              key: POOL_MAX_OPEN_CONNS
+
+        # Gmail credentials from secret
+        - name: GMAIL_CREDENTIALS
+          value: /credentials/gmail/credentials.json
+
+        volumeMounts:
+        - name: gmail-creds
+          mountPath: /credentials/gmail
+          readOnly: true
+
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 9090
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 9090
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 9090
+          initialDelaySeconds: 0
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 30
+
+      volumes:
+      - name: gmail-creds
+        secret:
+          secretName: gmail-creds
+
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - virtual-sdr
+              topologyKey: kubernetes.io/hostname
+
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: virtual-sdr
+  namespace: virtual-sdr
+  labels:
+    app: virtual-sdr
+spec:
+  type: ClusterIP
+  selector:
+    app: virtual-sdr
+  ports:
+  - name: metrics
+    port: 9090
+    targetPort: 9090
+    protocol: TCP
+
+---
+# ServiceAccount
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: virtual-sdr
+  namespace: virtual-sdr
+
+---
+# ServiceMonitor for Prometheus Operator
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: virtual-sdr
+  namespace: virtual-sdr
+  labels:
+    app: virtual-sdr
+spec:
+  selector:
+    matchLabels:
+      app: virtual-sdr
+  endpoints:
+  - port: metrics
+    interval: 15s
+    path: /metrics
+
+---
+# HorizontalPodAutoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: virtual-sdr-hpa
+  namespace: virtual-sdr
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: virtual-sdr
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 2
+        periodSeconds: 15
+      selectPolicy: Max
+
+---
+# PodDisruptionBudget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: virtual-sdr-pdb
+  namespace: virtual-sdr
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: virtual-sdr

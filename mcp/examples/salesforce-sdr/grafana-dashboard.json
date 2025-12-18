@@ -1,0 +1,200 @@
+{
+  "dashboard": {
+    "title": "Virtual SDR - MCP Metrics",
+    "tags": ["mcp", "sdr", "salesforce"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "MCP Server Connections",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "mcp_client_connected",
+            "legendFormat": "{{server}}"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Cache Hit Rate",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "mcp_cache_hit_rate",
+            "legendFormat": "Hit Rate %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 50, "color": "yellow"},
+                {"value": 80, "color": "green"}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Connection Pool Utilization",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "mcp_pool_connections_active / mcp_pool_connections_total * 100",
+            "legendFormat": "Pool Usage %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 70, "color": "yellow"},
+                {"value": 90, "color": "red"}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0}
+      },
+      {
+        "id": 4,
+        "title": "Circuit Breaker State",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "mcp_circuit_breaker_state",
+            "legendFormat": "State"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0}
+      },
+      {
+        "id": 5,
+        "title": "Tool Calls per Second (by server)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(mcp_client_calls_total[5m])",
+            "legendFormat": "{{server}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4}
+      },
+      {
+        "id": 6,
+        "title": "Error Rate by Server",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(mcp_client_calls_failed[5m]) / rate(mcp_client_calls_total[5m]) * 100",
+            "legendFormat": "{{server}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4}
+      },
+      {
+        "id": 7,
+        "title": "Cache Operations",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(mcp_cache_hits_total[5m])",
+            "legendFormat": "Hits/s"
+          },
+          {
+            "expr": "rate(mcp_cache_misses_total[5m])",
+            "legendFormat": "Misses/s"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12}
+      },
+      {
+        "id": 8,
+        "title": "Connection Pool Status",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "mcp_pool_connections_total",
+            "legendFormat": "Total"
+          },
+          {
+            "expr": "mcp_pool_connections_active",
+            "legendFormat": "Active"
+          },
+          {
+            "expr": "mcp_pool_connections_idle",
+            "legendFormat": "Idle"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12}
+      },
+      {
+        "id": 9,
+        "title": "Tools Discovered per Server",
+        "type": "bargauge",
+        "targets": [
+          {
+            "expr": "mcp_client_tools_discovered",
+            "legendFormat": "{{server}}"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 8, "x": 0, "y": 20}
+      },
+      {
+        "id": 10,
+        "title": "Circuit Breaker Failures",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "mcp_circuit_breaker_failed_calls",
+            "legendFormat": "Failed Calls"
+          },
+          {
+            "expr": "mcp_circuit_breaker_rejected_calls",
+            "legendFormat": "Rejected Calls"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 8, "x": 8, "y": 20}
+      },
+      {
+        "id": 11,
+        "title": "Pool Wait Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(mcp_pool_wait_duration_seconds[5m])",
+            "legendFormat": "Avg Wait Time"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          }
+        },
+        "gridPos": {"h": 6, "w": 8, "x": 16, "y": 20}
+      }
+    ],
+    "refresh": "10s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    }
+  }
+}

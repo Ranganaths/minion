@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/yourusername/minion/llm"
+	"github.com/yourusername/minion/mcp/bridge"
+	"github.com/yourusername/minion/mcp/client"
 	"github.com/yourusername/minion/models"
 	"github.com/yourusername/minion/storage"
 	"github.com/yourusername/minion/tools"
@@ -18,6 +20,10 @@ type FrameworkImpl struct {
 	llmProvider      llm.Provider
 	behaviorRegistry BehaviorRegistry
 	toolRegistry     tools.Registry
+
+	// MCP (Model Context Protocol) components
+	mcpClientManager *client.MCPClientManager
+	mcpBridge        *bridge.BridgeRegistry
 }
 
 // Option is a functional option for configuring the framework
@@ -53,10 +59,17 @@ func WithToolRegistry(registry tools.Registry) Option {
 
 // NewFramework creates a new agent framework with the given options
 func NewFramework(opts ...Option) *FrameworkImpl {
+	// Initialize MCP client manager
+	mcpManager := client.NewMCPClientManager(nil) // Use default config
+
 	f := &FrameworkImpl{
 		behaviorRegistry: NewBehaviorRegistry(),
 		toolRegistry:     tools.NewRegistry(),
+		mcpClientManager: mcpManager,
 	}
+
+	// Initialize MCP bridge (requires framework reference for tool registration)
+	f.mcpBridge = bridge.NewBridgeRegistry(mcpManager, f)
 
 	for _, opt := range opts {
 		opt(f)
@@ -408,10 +421,92 @@ func (f *FrameworkImpl) updateMetrics(ctx context.Context, agentID string, succe
 	_ = f.store.UpdateMetrics(ctx, metrics)
 }
 
+// ConnectMCPServer connects to an external MCP server and registers its tools
+func (f *FrameworkImpl) ConnectMCPServer(ctx context.Context, config interface{}) error {
+	// Convert config to ClientConfig
+	clientConfig, ok := config.(*client.ClientConfig)
+	if !ok {
+		return fmt.Errorf("invalid config type: expected *client.ClientConfig")
+	}
+
+	// Connect to server
+	if err := f.mcpClientManager.ConnectServer(ctx, clientConfig); err != nil {
+		return fmt.Errorf("failed to connect to MCP server: %w", err)
+	}
+
+	// Register tools from server
+	if err := f.mcpBridge.RegisterServerTools(ctx, clientConfig.ServerName); err != nil {
+		// Disconnect on registration failure
+		_ = f.mcpClientManager.DisconnectServer(clientConfig.ServerName)
+		return fmt.Errorf("failed to register MCP tools: %w", err)
+	}
+
+	return nil
+}
+
+// DisconnectMCPServer disconnects from an MCP server and unregisters its tools
+func (f *FrameworkImpl) DisconnectMCPServer(serverName string) error {
+	// Unregister tools first
+	if err := f.mcpBridge.UnregisterServerTools(serverName); err != nil {
+		// Continue with disconnect even if unregister fails
+		_ = err
+	}
+
+	// Disconnect from server
+	if err := f.mcpClientManager.DisconnectServer(serverName); err != nil {
+		return fmt.Errorf("failed to disconnect from MCP server: %w", err)
+	}
+
+	return nil
+}
+
+// ListMCPServers returns names of all connected MCP servers
+func (f *FrameworkImpl) ListMCPServers() []string {
+	return f.mcpClientManager.ListServers()
+}
+
+// GetMCPServerStatus returns status of all connected MCP servers
+func (f *FrameworkImpl) GetMCPServerStatus() map[string]interface{} {
+	status := f.mcpClientManager.GetStatus()
+
+	// Convert to map[string]interface{} for API compatibility
+	result := make(map[string]interface{})
+	for name, s := range status {
+		result[name] = s
+	}
+
+	return result
+}
+
+// RefreshMCPTools refreshes tools from an MCP server
+func (f *FrameworkImpl) RefreshMCPTools(ctx context.Context, serverName string) error {
+	// Unregister existing tools
+	if err := f.mcpBridge.UnregisterServerTools(serverName); err != nil {
+		// If no tools found, that's fine - continue with re-registration
+		_ = err
+	}
+
+	// Re-register tools
+	if err := f.mcpBridge.RegisterServerTools(ctx, serverName); err != nil {
+		return fmt.Errorf("failed to refresh MCP tools: %w", err)
+	}
+
+	return nil
+}
+
 // Close closes the framework and releases resources
 func (f *FrameworkImpl) Close() error {
+	// Close MCP connections
+	if f.mcpClientManager != nil {
+		if err := f.mcpClientManager.Close(); err != nil {
+			return fmt.Errorf("failed to close MCP client manager: %w", err)
+		}
+	}
+
+	// Close storage
 	if f.store != nil {
 		return f.store.Close()
 	}
+
 	return nil
 }

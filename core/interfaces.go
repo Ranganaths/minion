@@ -62,6 +62,13 @@ type Framework interface {
 	RegisterTool(tool interface{}) error
 	GetToolsForAgent(agent *models.Agent) []interface{}
 
+	// MCP operations (Model Context Protocol)
+	ConnectMCPServer(ctx context.Context, config interface{}) error
+	DisconnectMCPServer(serverName string) error
+	ListMCPServers() []string
+	GetMCPServerStatus() map[string]interface{}
+	RefreshMCPTools(ctx context.Context, serverName string) error
+
 	// Execution
 	Execute(ctx context.Context, agentID string, input *models.Input) (*models.Output, error)
 
