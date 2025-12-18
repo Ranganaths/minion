@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/yourusername/minion/models"
+	"github.com/Ranganaths/minion/models"
 )
 
 // JiraIssueTool manages Jira issues

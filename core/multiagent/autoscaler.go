@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yourusername/minion/observability"
+	"github.com/Ranganaths/minion/observability"
 )
 
 // ScalingAction defines the type of scaling action

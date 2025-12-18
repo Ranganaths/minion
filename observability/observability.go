@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/yourusername/minion/config"
+	"github.com/Ranganaths/minion/config"
 )
 
 // Observability is the main interface for the observability stack

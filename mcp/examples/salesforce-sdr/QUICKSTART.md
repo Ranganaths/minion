@@ -296,7 +296,7 @@ kubectl scale deployment virtual-sdr --replicas=10 -n virtual-sdr
 - **Full Documentation**: See [README.md](README.md)
 - **MCP Specification**: https://modelcontextprotocol.io
 - **Phase 3 Features**: See [../../PHASE3_COMPLETE.md](../../PHASE3_COMPLETE.md)
-- **Minion Framework**: https://github.com/yourusername/minion
+- **Minion Framework**: https://github.com/Ranganaths/minion
 
 ## 💡 Common Workflows
 
@@ -335,7 +335,7 @@ If you encounter issues:
 2. Verify configuration: `make validate-env`
 3. Check metrics: `make metrics`
 4. Review documentation: [README.md](README.md)
-5. Open issue: https://github.com/yourusername/minion/issues
+5. Open issue: https://github.com/Ranganaths/minion/issues
 
 ## 🎉 Success!
 

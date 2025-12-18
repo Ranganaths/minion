@@ -78,7 +78,7 @@ go mod init tutorial
 ### Step 2: Install Dependencies
 
 ```bash
-go get github.com/yourusername/minion
+go get github.com/Ranganaths/minion
 go get github.com/prometheus/client_golang/prometheus
 ```
 
@@ -107,7 +107,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/yourusername/minion/mcp/client"
+	"github.com/Ranganaths/minion/mcp/client"
 )
 
 func main() {
@@ -237,7 +237,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/yourusername/minion/mcp/client"
+	"github.com/Ranganaths/minion/mcp/client"
 )
 
 func main() {
@@ -362,7 +362,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/yourusername/minion/mcp/client"
+	"github.com/Ranganaths/minion/mcp/client"
 )
 
 func main() {
@@ -498,8 +498,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/yourusername/minion/mcp/client"
-	"github.com/yourusername/minion/mcp/observability"
+	"github.com/Ranganaths/minion/mcp/client"
+	"github.com/Ranganaths/minion/mcp/observability"
 )
 
 func main() {
@@ -646,8 +646,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/yourusername/minion/mcp/client"
-	"github.com/yourusername/minion/mcp/observability"
+	"github.com/Ranganaths/minion/mcp/client"
+	"github.com/Ranganaths/minion/mcp/observability"
 )
 
 func main() {

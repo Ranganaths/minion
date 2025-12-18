@@ -3,8 +3,8 @@ package bridge
 import (
 	"testing"
 
-	"github.com/yourusername/minion/mcp/client"
-	"github.com/yourusername/minion/models"
+	"github.com/Ranganaths/minion/mcp/client"
+	"github.com/Ranganaths/minion/models"
 )
 
 // Mock tool registrar for testing

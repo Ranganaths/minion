@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/yourusername/minion/mcp/client"
-	"github.com/yourusername/minion/models"
-	"github.com/yourusername/minion/tools"
+	"github.com/Ranganaths/minion/mcp/client"
+	"github.com/Ranganaths/minion/models"
+	"github.com/Ranganaths/minion/tools"
 )
 
 // MCPToolWrapper wraps an external MCP tool as a Minion Tool

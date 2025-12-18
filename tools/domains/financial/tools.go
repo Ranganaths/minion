@@ -6,7 +6,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/yourusername/minion/models"
+	"github.com/Ranganaths/minion/models"
 )
 
 // InvoiceGeneratorTool creates invoices from order data

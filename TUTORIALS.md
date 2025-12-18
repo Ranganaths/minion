@@ -50,7 +50,7 @@ import (
     "log"
     "time"
 
-    "github.com/yourusername/minion/core/multiagent"
+    "github.com/Ranganaths/minion/core/multiagent"
 )
 
 func main() {
@@ -126,7 +126,7 @@ import (
     "log"
     "time"
 
-    "github.com/yourusername/minion/core/multiagent"
+    "github.com/Ranganaths/minion/core/multiagent"
 )
 
 func main() {
@@ -249,7 +249,7 @@ import (
     "log"
     "time"
 
-    "github.com/yourusername/minion/core/multiagent"
+    "github.com/Ranganaths/minion/core/multiagent"
 )
 
 func main() {
@@ -398,7 +398,7 @@ import (
     "fmt"
     "time"
 
-    "github.com/yourusername/minion/core/multiagent"
+    "github.com/Ranganaths/minion/core/multiagent"
 )
 
 func main() {
@@ -453,7 +453,7 @@ import (
     "fmt"
     "time"
 
-    "github.com/yourusername/minion/core/multiagent"
+    "github.com/Ranganaths/minion/core/multiagent"
 )
 
 func main() {
@@ -520,7 +520,7 @@ import (
     "fmt"
     "time"
 
-    "github.com/yourusername/minion/core/multiagent"
+    "github.com/Ranganaths/minion/core/multiagent"
 )
 
 func main() {
@@ -635,7 +635,7 @@ import (
     "log"
 
     _ "github.com/lib/pq"
-    "github.com/yourusername/minion/core/multiagent"
+    "github.com/Ranganaths/minion/core/multiagent"
 )
 
 func main() {
@@ -823,7 +823,7 @@ import (
     "syscall"
 
     "github.com/redis/go-redis/v9"
-    "github.com/yourusername/minion/core/multiagent"
+    "github.com/Ranganaths/minion/core/multiagent"
 )
 
 func main() {
@@ -893,7 +893,7 @@ import (
     "syscall"
 
     "github.com/redis/go-redis/v9"
-    "github.com/yourusername/minion/core/multiagent"
+    "github.com/Ranganaths/minion/core/multiagent"
 )
 
 func main() {
@@ -992,7 +992,7 @@ import (
     "log"
 
     "github.com/redis/go-redis/v9"
-    "github.com/yourusername/minion/core/multiagent"
+    "github.com/Ranganaths/minion/core/multiagent"
 )
 
 func main() {
@@ -1064,7 +1064,7 @@ import (
     "log"
     "time"
 
-    "github.com/yourusername/minion/core/multiagent"
+    "github.com/Ranganaths/minion/core/multiagent"
 )
 
 func main() {
@@ -1234,7 +1234,7 @@ import (
     "math/rand"
     "time"
 
-    "github.com/yourusername/minion/core/multiagent"
+    "github.com/Ranganaths/minion/core/multiagent"
 )
 
 func main() {
@@ -1487,7 +1487,7 @@ import (
     "fmt"
     "time"
 
-    "github.com/yourusername/minion/core/multiagent/resilience"
+    "github.com/Ranganaths/minion/core/multiagent/resilience"
 )
 
 func main() {
@@ -1537,7 +1537,7 @@ import (
     "fmt"
     "time"
 
-    "github.com/yourusername/minion/core/multiagent/resilience"
+    "github.com/Ranganaths/minion/core/multiagent/resilience"
 )
 
 func main() {
@@ -1584,7 +1584,7 @@ import (
     "fmt"
     "time"
 
-    "github.com/yourusername/minion/core/multiagent/resilience"
+    "github.com/Ranganaths/minion/core/multiagent/resilience"
 )
 
 func main() {
@@ -1644,7 +1644,7 @@ import (
     "math/rand"
     "time"
 
-    "github.com/yourusername/minion/core/multiagent/resilience"
+    "github.com/Ranganaths/minion/core/multiagent/resilience"
 )
 
 func main() {
@@ -1727,7 +1727,7 @@ import (
     "sync"
 
     "github.com/nats-io/nats.go"
-    "github.com/yourusername/minion/core/multiagent"
+    "github.com/Ranganaths/minion/core/multiagent"
 )
 
 // NATSProtocol implements Protocol interface using NATS messaging
@@ -1868,7 +1868,7 @@ import (
     "log"
     "time"
 
-    "github.com/yourusername/minion/core/multiagent"
+    "github.com/Ranganaths/minion/core/multiagent"
 )
 
 func main() {
@@ -2227,7 +2227,7 @@ import (
     "fmt"
     "log"
 
-    "github.com/yourusername/minion/core/multiagent"
+    "github.com/Ranganaths/minion/core/multiagent"
 )
 
 func main() {
@@ -2332,7 +2332,7 @@ import (
     "fmt"
     "sync"
 
-    "github.com/yourusername/minion/core/multiagent"
+    "github.com/Ranganaths/minion/core/multiagent"
 )
 
 type ScrapingCoordinator struct {
@@ -2401,7 +2401,7 @@ import (
     "context"
     "fmt"
 
-    "github.com/yourusername/minion/core/multiagent"
+    "github.com/Ranganaths/minion/core/multiagent"
 )
 
 type TestRunner struct {

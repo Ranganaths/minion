@@ -359,7 +359,7 @@ CB_FAILURE_RATE_THRESHOLD=30.0
 - **Quick Start**: [QUICKSTART.md](QUICKSTART.md)
 - **Phase 3 Features**: [../../PHASE3_COMPLETE.md](../../PHASE3_COMPLETE.md)
 - **MCP Integration**: [../../README.md](../../README.md)
-- **GitHub Issues**: https://github.com/yourusername/minion/issues
+- **GitHub Issues**: https://github.com/Ranganaths/minion/issues
 
 ## Credits
 

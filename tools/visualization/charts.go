@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/yourusername/minion/models"
+	"github.com/Ranganaths/minion/models"
 )
 
 // ChartType represents different types of charts

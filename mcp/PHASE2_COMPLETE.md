@@ -195,7 +195,7 @@ cd mcp/client && go test -v -run TestSchemaValidator
 --- PASS: TestSchemaValidator_StrictMode (0.00s)
 ... (11 tests total)
 PASS
-ok      github.com/yourusername/minion/mcp/client       0.885s
+ok      github.com/Ranganaths/minion/mcp/client       0.885s
 ```
 
 **Result**: ✅ **All 11 schema validation tests passing**

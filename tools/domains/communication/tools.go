@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourusername/minion/models"
+	"github.com/Ranganaths/minion/models"
 )
 
 // SlackMessageTool sends messages to Slack channels

@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/yourusername/minion/mcp/client"
+	"github.com/Ranganaths/minion/mcp/client"
 )
 
 // MockMCPServer is a mock MCP server for testing

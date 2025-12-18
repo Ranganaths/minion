@@ -72,9 +72,9 @@ go run main.go
 
 ```go
 import (
-    "github.com/yourusername/minion/behaviors"
-    "github.com/yourusername/minion/core"
-    "github.com/yourusername/minion/tools/visualization"
+    "github.com/Ranganaths/minion/behaviors"
+    "github.com/Ranganaths/minion/core"
+    "github.com/Ranganaths/minion/tools/visualization"
 )
 
 // Initialize framework

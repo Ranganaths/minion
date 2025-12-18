@@ -106,7 +106,7 @@ import (
     "fmt"
     "os"
 
-    "github.com/yourusername/minion/llm"
+    "github.com/Ranganaths/minion/llm"
 )
 
 func main() {

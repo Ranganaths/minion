@@ -7,10 +7,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/yourusername/minion/core"
-	"github.com/yourusername/minion/models"
-	"github.com/yourusername/minion/storage"
-	"github.com/yourusername/minion/tools/domains"
+	"github.com/Ranganaths/minion/core"
+	"github.com/Ranganaths/minion/models"
+	"github.com/Ranganaths/minion/storage"
+	"github.com/Ranganaths/minion/tools/domains"
 )
 
 /*

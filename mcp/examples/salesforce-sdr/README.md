@@ -694,14 +694,14 @@ MIT License - See LICENSE file for details
 ## Support
 
 For issues or questions:
-- GitHub Issues: https://github.com/yourusername/minion/issues
+- GitHub Issues: https://github.com/Ranganaths/minion/issues
 - Documentation: https://docs.minion.dev
 - MCP Specification: https://modelcontextprotocol.io
 
 ## Credits
 
 Built with:
-- [Minion Framework](https://github.com/yourusername/minion)
+- [Minion Framework](https://github.com/Ranganaths/minion)
 - [Model Context Protocol](https://modelcontextprotocol.io)
 - MCP Community Servers
 

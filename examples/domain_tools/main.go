@@ -6,12 +6,12 @@ import (
 	"log"
 	"os"
 
-	"github.com/yourusername/minion/core"
-	"github.com/yourusername/minion/llm"
-	"github.com/yourusername/minion/models"
-	"github.com/yourusername/minion/storage"
-	"github.com/yourusername/minion/tools"
-	"github.com/yourusername/minion/tools/domains"
+	"github.com/Ranganaths/minion/core"
+	"github.com/Ranganaths/minion/llm"
+	"github.com/Ranganaths/minion/models"
+	"github.com/Ranganaths/minion/storage"
+	"github.com/Ranganaths/minion/tools"
+	"github.com/Ranganaths/minion/tools/domains"
 )
 
 func main() {

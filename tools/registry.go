@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/yourusername/minion/models"
+	"github.com/Ranganaths/minion/models"
 )
 
 var (

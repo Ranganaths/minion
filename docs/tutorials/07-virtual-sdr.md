@@ -86,7 +86,7 @@ go mod init virtual-sdr
 ### Step 2: Install Dependencies
 
 ```bash
-go get github.com/yourusername/minion
+go get github.com/Ranganaths/minion
 go get github.com/prometheus/client_golang/prometheus
 ```
 
@@ -505,8 +505,8 @@ import (
 	"virtual-sdr/internal/outreach"
 	"virtual-sdr/internal/scheduling"
 
-	"github.com/yourusername/minion/mcp/client"
-	"github.com/yourusername/minion/mcp/observability"
+	"github.com/Ranganaths/minion/mcp/client"
+	"github.com/Ranganaths/minion/mcp/observability"
 )
 
 type VirtualSDR struct {

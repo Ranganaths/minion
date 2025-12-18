@@ -83,7 +83,7 @@ go version
 
 2. **Clone the repository**
 ```bash
-git clone https://github.com/yourusername/minion.git
+git clone https://github.com/Ranganaths/minion.git
 cd minion
 ```
 
@@ -318,10 +318,10 @@ import (
     "context"
     "log"
 
-    "github.com/yourusername/minion/core"
-    "github.com/yourusername/minion/models"
-    "github.com/yourusername/minion/storage"
-    "github.com/yourusername/minion/tools/domains"
+    "github.com/Ranganaths/minion/core"
+    "github.com/Ranganaths/minion/models"
+    "github.com/Ranganaths/minion/storage"
+    "github.com/Ranganaths/minion/tools/domains"
 )
 
 func main() {
@@ -425,7 +425,7 @@ examples/
 
 ### Community
 - Discord: https://discord.gg/minion
-- GitHub Discussions: https://github.com/yourusername/minion/discussions
+- GitHub Discussions: https://github.com/Ranganaths/minion/discussions
 - Twitter: @MinionFramework
 
 ---
@@ -438,7 +438,7 @@ examples/
 ```go
 // Solution: Ensure all domain packages are imported
 import (
-    "github.com/yourusername/minion/tools/domains"
+    "github.com/Ranganaths/minion/tools/domains"
 )
 ```
 

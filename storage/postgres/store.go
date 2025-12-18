@@ -8,8 +8,8 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
-	"github.com/yourusername/minion/models"
-	"github.com/yourusername/minion/storage"
+	"github.com/Ranganaths/minion/models"
+	"github.com/Ranganaths/minion/storage"
 )
 
 // PostgresStore implements the storage.Store interface using PostgreSQL

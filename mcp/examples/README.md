@@ -77,8 +77,8 @@ This directory contains examples demonstrating how to use Model Context Protocol
 
 ```go
 import (
-    "github.com/yourusername/minion/core"
-    "github.com/yourusername/minion/mcp/client"
+    "github.com/Ranganaths/minion/core"
+    "github.com/Ranganaths/minion/mcp/client"
 )
 
 // Initialize framework

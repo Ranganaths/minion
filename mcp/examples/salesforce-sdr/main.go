@@ -10,8 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/yourusername/minion/mcp/client"
-	"github.com/yourusername/minion/mcp/observability"
+	"github.com/Ranganaths/minion/mcp/client"
+	"github.com/Ranganaths/minion/mcp/observability"
 )
 
 // VirtualSDR represents an AI-powered Sales Development Representative

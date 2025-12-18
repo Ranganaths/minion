@@ -20,7 +20,7 @@
 ### Initialize Framework
 
 ```go
-import "github.com/yourusername/minion/core"
+import "github.com/Ranganaths/minion/core"
 
 framework := core.NewFramework()
 defer framework.Close()
@@ -544,7 +544,7 @@ if errors.Is(err, context.DeadlineExceeded) {
 ### Connection Pool
 
 ```go
-import "github.com/yourusername/minion/mcp/client"
+import "github.com/Ranganaths/minion/mcp/client"
 
 poolConfig := client.DefaultPoolConfig()
 poolConfig.MaxOpenConns = 20
@@ -631,8 +631,8 @@ package main
 
 import (
     "context"
-    "github.com/yourusername/minion/core"
-    "github.com/yourusername/minion/models"
+    "github.com/Ranganaths/minion/core"
+    "github.com/Ranganaths/minion/models"
 )
 
 func main() {
@@ -662,9 +662,9 @@ package main
 import (
     "context"
     "os"
-    "github.com/yourusername/minion/core"
-    "github.com/yourusername/minion/models"
-    "github.com/yourusername/minion/mcp/client"
+    "github.com/Ranganaths/minion/core"
+    "github.com/Ranganaths/minion/models"
+    "github.com/Ranganaths/minion/mcp/client"
 )
 
 func main() {

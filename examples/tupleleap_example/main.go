@@ -6,8 +6,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/yourusername/minion/core/multiagent"
-	"github.com/yourusername/minion/llm"
+	"github.com/Ranganaths/minion/core/multiagent"
+	"github.com/Ranganaths/minion/llm"
 )
 
 func main() {

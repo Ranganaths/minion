@@ -6,7 +6,7 @@ One-page reference for Minion Framework tools and examples.
 
 ```bash
 # Clone & Setup
-git clone https://github.com/yourusername/minion.git
+git clone https://github.com/Ranganaths/minion.git
 cd minion && go mod download
 
 # Run Examples
@@ -72,10 +72,10 @@ package main
 
 import (
     "context"
-    "github.com/yourusername/minion/core"
-    "github.com/yourusername/minion/models"
-    "github.com/yourusername/minion/storage"
-    "github.com/yourusername/minion/tools/domains"
+    "github.com/Ranganaths/minion/core"
+    "github.com/Ranganaths/minion/models"
+    "github.com/Ranganaths/minion/storage"
+    "github.com/Ranganaths/minion/tools/domains"
 )
 
 func main() {
@@ -260,7 +260,7 @@ TWILIO_AUTH_TOKEN=...
 
 ## 🤝 Support
 
-- **GitHub:** https://github.com/yourusername/minion
+- **GitHub:** https://github.com/Ranganaths/minion
 - **Discord:** https://discord.gg/minion
 - **Docs:** https://docs.minion-framework.com
 

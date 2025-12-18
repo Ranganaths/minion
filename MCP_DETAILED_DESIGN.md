@@ -520,9 +520,9 @@ import (
     "fmt"
 
     "github.com/modelcontextprotocol/go-sdk/mcp"
-    "github.com/yourusername/minion/mcp/client"
-    "github.com/yourusername/minion/models"
-    "github.com/yourusername/minion/tools"
+    "github.com/Ranganaths/minion/mcp/client"
+    "github.com/Ranganaths/minion/models"
+    "github.com/Ranganaths/minion/tools"
 )
 
 // MCPToolWrapper wraps an external MCP tool as a Minion Tool
@@ -693,8 +693,8 @@ import (
     "context"
     "fmt"
 
-    "github.com/yourusername/minion/core"
-    "github.com/yourusername/minion/mcp/client"
+    "github.com/Ranganaths/minion/core"
+    "github.com/Ranganaths/minion/mcp/client"
 )
 
 // BridgeRegistry manages MCP tool wrappers

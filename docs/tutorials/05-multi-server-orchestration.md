@@ -94,7 +94,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/yourusername/minion/mcp/client"
+	"github.com/Ranganaths/minion/mcp/client"
 )
 
 func main() {
@@ -245,7 +245,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/yourusername/minion/mcp/client"
+	"github.com/Ranganaths/minion/mcp/client"
 )
 
 func main() {
@@ -362,7 +362,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/yourusername/minion/mcp/client"
+	"github.com/Ranganaths/minion/mcp/client"
 )
 
 func main() {
@@ -499,7 +499,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yourusername/minion/mcp/client"
+	"github.com/Ranganaths/minion/mcp/client"
 )
 
 type SupportTicket struct {

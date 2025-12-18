@@ -98,7 +98,7 @@ cd support-bot
 go mod init support-bot
 
 # Install dependencies
-go get github.com/yourusername/minion
+go get github.com/Ranganaths/minion
 
 # Create main.go
 touch main.go
@@ -117,9 +117,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/yourusername/minion/core"
-	"github.com/yourusername/minion/models"
-	"github.com/yourusername/minion/mcp/client"
+	"github.com/Ranganaths/minion/core"
+	"github.com/Ranganaths/minion/models"
+	"github.com/Ranganaths/minion/mcp/client"
 )
 
 type SupportBot struct {

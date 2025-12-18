@@ -1,16 +1,16 @@
 package domains
 
 import (
-	"github.com/yourusername/minion/core"
-	"github.com/yourusername/minion/tools"
-	"github.com/yourusername/minion/tools/domains/analytics"
-	"github.com/yourusername/minion/tools/domains/communication"
-	"github.com/yourusername/minion/tools/domains/customer"
-	"github.com/yourusername/minion/tools/domains/financial"
-	"github.com/yourusername/minion/tools/domains/integration"
-	"github.com/yourusername/minion/tools/domains/marketing"
-	"github.com/yourusername/minion/tools/domains/projectmgmt"
-	"github.com/yourusername/minion/tools/domains/sales"
+	"github.com/Ranganaths/minion/core"
+	"github.com/Ranganaths/minion/tools"
+	"github.com/Ranganaths/minion/tools/domains/analytics"
+	"github.com/Ranganaths/minion/tools/domains/communication"
+	"github.com/Ranganaths/minion/tools/domains/customer"
+	"github.com/Ranganaths/minion/tools/domains/financial"
+	"github.com/Ranganaths/minion/tools/domains/integration"
+	"github.com/Ranganaths/minion/tools/domains/marketing"
+	"github.com/Ranganaths/minion/tools/domains/projectmgmt"
+	"github.com/Ranganaths/minion/tools/domains/sales"
 )
 
 // RegisterAllDomainTools registers all domain-specific tools with the framework

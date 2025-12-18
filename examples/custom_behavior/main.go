@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourusername/minion/core"
-	"github.com/yourusername/minion/llm"
-	"github.com/yourusername/minion/models"
-	"github.com/yourusername/minion/storage"
+	"github.com/Ranganaths/minion/core"
+	"github.com/Ranganaths/minion/llm"
+	"github.com/Ranganaths/minion/models"
+	"github.com/Ranganaths/minion/storage"
 )
 
 // SentimentAnalysisBehavior is a custom behavior that analyzes sentiment

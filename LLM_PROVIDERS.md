@@ -114,7 +114,7 @@ import (
     "log"
     "os"
 
-    "github.com/yourusername/minion/llm"
+    "github.com/Ranganaths/minion/llm"
 )
 
 func main() {
@@ -167,8 +167,8 @@ package main
 import (
     "context"
 
-    "github.com/yourusername/minion/core/multiagent"
-    "github.com/yourusername/minion/llm"
+    "github.com/Ranganaths/minion/core/multiagent"
+    "github.com/Ranganaths/minion/llm"
 )
 
 func main() {
@@ -266,7 +266,7 @@ import (
     "context"
     "testing"
 
-    "github.com/yourusername/minion/llm"
+    "github.com/Ranganaths/minion/llm"
 )
 
 func TestYourProvider(t *testing.T) {
@@ -304,7 +304,7 @@ import (
     "log"
     "os"
 
-    "github.com/yourusername/minion/llm"
+    "github.com/Ranganaths/minion/llm"
 )
 
 func main() {
@@ -1357,8 +1357,8 @@ import (
     "context"
     "os"
 
-    "github.com/yourusername/minion/core/multiagent"
-    "github.com/yourusername/minion/llm"
+    "github.com/Ranganaths/minion/core/multiagent"
+    "github.com/Ranganaths/minion/llm"
 )
 
 func main() {

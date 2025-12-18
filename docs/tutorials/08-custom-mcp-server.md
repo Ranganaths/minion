@@ -604,9 +604,9 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/yourusername/minion/core"
-	"github.com/yourusername/minion/mcp/client"
-	"github.com/yourusername/minion/models"
+	"github.com/Ranganaths/minion/core"
+	"github.com/Ranganaths/minion/mcp/client"
+	"github.com/Ranganaths/minion/models"
 )
 
 func main() {

@@ -7,12 +7,12 @@ import (
 	"log"
 	"os"
 
-	"github.com/yourusername/minion/behaviors"
-	"github.com/yourusername/minion/core"
-	"github.com/yourusername/minion/llm"
-	"github.com/yourusername/minion/models"
-	"github.com/yourusername/minion/storage"
-	"github.com/yourusername/minion/tools/visualization"
+	"github.com/Ranganaths/minion/behaviors"
+	"github.com/Ranganaths/minion/core"
+	"github.com/Ranganaths/minion/llm"
+	"github.com/Ranganaths/minion/models"
+	"github.com/Ranganaths/minion/storage"
+	"github.com/Ranganaths/minion/tools/visualization"
 )
 
 func main() {

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yourusername/minion/mcp/client"
+	"github.com/Ranganaths/minion/mcp/client"
 )
 
 // PrometheusMetrics exports MCP metrics in Prometheus format

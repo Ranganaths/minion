@@ -260,7 +260,7 @@ framework := core.NewFramework(
 ### In-Memory (Development)
 
 ```go
-import "github.com/yourusername/minion/storage"
+import "github.com/Ranganaths/minion/storage"
 
 store := storage.NewInMemory()
 framework := core.NewFramework(core.WithStorage(store))
@@ -406,8 +406,8 @@ MIT License - see LICENSE file for details
 ## 📞 Support
 
 - **Documentation**: Check the `examples/` directory and inline code comments
-- **Issues**: [GitHub Issues](https://github.com/yourusername/minion/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/minion/discussions)
+- **Issues**: [GitHub Issues](https://github.com/Ranganaths/minion/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Ranganaths/minion/discussions)
 
 ---
 

@@ -135,7 +135,7 @@ We've created **3 comprehensive examples** demonstrating real-world automation s
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/minion.git
+git clone https://github.com/Ranganaths/minion.git
 cd minion
 
 # Install dependencies

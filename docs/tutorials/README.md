@@ -189,7 +189,7 @@ kubectl version
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/minion.git
+git clone https://github.com/Ranganaths/minion.git
 cd minion
 ```
 
@@ -339,9 +339,9 @@ After completing these tutorials, you'll be able to:
 ## 🤝 Contributing
 
 Found an issue or have a suggestion?
-- Open an issue: [GitHub Issues](https://github.com/yourusername/minion/issues)
-- Submit improvements: [Pull Requests](https://github.com/yourusername/minion/pulls)
-- Join discussions: [GitHub Discussions](https://github.com/yourusername/minion/discussions)
+- Open an issue: [GitHub Issues](https://github.com/Ranganaths/minion/issues)
+- Submit improvements: [Pull Requests](https://github.com/Ranganaths/minion/pulls)
+- Join discussions: [GitHub Discussions](https://github.com/Ranganaths/minion/discussions)
 
 ## 📜 License
 

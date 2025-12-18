@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/yourusername/minion/llm"
-	"github.com/yourusername/minion/mcp/bridge"
-	"github.com/yourusername/minion/mcp/client"
-	"github.com/yourusername/minion/models"
-	"github.com/yourusername/minion/storage"
-	"github.com/yourusername/minion/tools"
+	"github.com/Ranganaths/minion/llm"
+	"github.com/Ranganaths/minion/mcp/bridge"
+	"github.com/Ranganaths/minion/mcp/client"
+	"github.com/Ranganaths/minion/models"
+	"github.com/Ranganaths/minion/storage"
+	"github.com/Ranganaths/minion/tools"
 	"github.com/google/uuid"
 )
 

@@ -157,9 +157,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/yourusername/minion/core"
-	"github.com/yourusername/minion/models"
-	"github.com/yourusername/minion/mcp/client"
+	"github.com/Ranganaths/minion/core"
+	"github.com/Ranganaths/minion/models"
+	"github.com/Ranganaths/minion/mcp/client"
 )
 
 func main() {
@@ -282,9 +282,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/yourusername/minion/core"
-	"github.com/yourusername/minion/models"
-	"github.com/yourusername/minion/mcp/client"
+	"github.com/Ranganaths/minion/core"
+	"github.com/Ranganaths/minion/models"
+	"github.com/Ranganaths/minion/mcp/client"
 )
 
 func main() {
@@ -650,8 +650,8 @@ Build a complete agent that combines multiple MCP servers!
 
 ## 💬 Questions?
 
-- [Open an Issue](https://github.com/yourusername/minion/issues)
-- [Join Discussions](https://github.com/yourusername/minion/discussions)
+- [Open an Issue](https://github.com/Ranganaths/minion/issues)
+- [Join Discussions](https://github.com/Ranganaths/minion/discussions)
 
 ---
 

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yourusername/minion/observability"
+	"github.com/Ranganaths/minion/observability"
 )
 
 // LoadBalancerStrategy defines the load balancing strategy

@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yourusername/minion/observability"
+	"github.com/Ranganaths/minion/observability"
 	"github.com/google/uuid"
 )
 

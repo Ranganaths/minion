@@ -65,7 +65,7 @@ go mod init tutorial
 ### Step 2: Install Minion
 
 ```bash
-go get github.com/yourusername/minion
+go get github.com/Ranganaths/minion
 ```
 
 ### Step 3: Create Main File
@@ -103,7 +103,7 @@ The **Framework** is the central coordinator. It manages:
 - Capability checking
 
 ```go
-import "github.com/yourusername/minion/core"
+import "github.com/Ranganaths/minion/core"
 
 // Create framework
 framework := core.NewFramework()
@@ -118,7 +118,7 @@ defer framework.Close()
 - **Capabilities**: List of allowed actions
 
 ```go
-import "github.com/yourusername/minion/models"
+import "github.com/Ranganaths/minion/models"
 
 agent := &models.Agent{
     ID:   "agent-001",
@@ -171,8 +171,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/yourusername/minion/core"
-	"github.com/yourusername/minion/models"
+	"github.com/Ranganaths/minion/core"
+	"github.com/Ranganaths/minion/models"
 )
 
 func main() {
@@ -270,8 +270,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/yourusername/minion/core"
-	"github.com/yourusername/minion/models"
+	"github.com/Ranganaths/minion/core"
+	"github.com/Ranganaths/minion/models"
 )
 
 func main() {
@@ -611,8 +611,8 @@ Learn how to connect external services via Model Context Protocol!
 
 ## 💬 Questions?
 
-- [Open an Issue](https://github.com/yourusername/minion/issues)
-- [Join Discussions](https://github.com/yourusername/minion/discussions)
+- [Open an Issue](https://github.com/Ranganaths/minion/issues)
+- [Join Discussions](https://github.com/Ranganaths/minion/discussions)
 - [View Examples](../../mcp/examples/)
 
 ---

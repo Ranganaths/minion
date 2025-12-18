@@ -526,12 +526,12 @@ import (
     "context"
     "log"
 
-    "github.com/yourusername/minion/core"
-    "github.com/yourusername/minion/mcp/bridge"
-    "github.com/yourusername/minion/mcp/client"
-    "github.com/yourusername/minion/models"
-    "github.com/yourusername/minion/storage"
-    "github.com/yourusername/minion/tools/domains"
+    "github.com/Ranganaths/minion/core"
+    "github.com/Ranganaths/minion/mcp/bridge"
+    "github.com/Ranganaths/minion/mcp/client"
+    "github.com/Ranganaths/minion/models"
+    "github.com/Ranganaths/minion/storage"
+    "github.com/Ranganaths/minion/tools/domains"
 )
 
 func main() {
@@ -618,10 +618,10 @@ import (
     "context"
     "log"
 
-    "github.com/yourusername/minion/core"
-    "github.com/yourusername/minion/mcp/client"
-    "github.com/yourusername/minion/storage"
-    "github.com/yourusername/minion/tools/domains"
+    "github.com/Ranganaths/minion/core"
+    "github.com/Ranganaths/minion/mcp/client"
+    "github.com/Ranganaths/minion/storage"
+    "github.com/Ranganaths/minion/tools/domains"
 )
 
 func main() {
@@ -693,11 +693,11 @@ import (
     "fmt"
     "log"
 
-    "github.com/yourusername/minion/core"
-    "github.com/yourusername/minion/mcp/client"
-    "github.com/yourusername/minion/models"
-    "github.com/yourusername/minion/storage"
-    "github.com/yourusername/minion/tools/domains"
+    "github.com/Ranganaths/minion/core"
+    "github.com/Ranganaths/minion/mcp/client"
+    "github.com/Ranganaths/minion/models"
+    "github.com/Ranganaths/minion/storage"
+    "github.com/Ranganaths/minion/tools/domains"
 )
 
 func main() {

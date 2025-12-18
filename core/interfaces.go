@@ -3,7 +3,7 @@ package core
 import (
 	"context"
 
-	"github.com/yourusername/minion/models"
+	"github.com/Ranganaths/minion/models"
 )
 
 // AgentExecutor defines the interface for agent execution
