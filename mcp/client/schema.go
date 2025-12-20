@@ -3,17 +3,22 @@ package client
 import (
 	"fmt"
 	"reflect"
+	"regexp"
+	"sync"
 )
 
 // SchemaValidator validates tool inputs against JSON schemas
 type SchemaValidator struct {
-	strictMode bool
+	strictMode   bool
+	regexCache   map[string]*regexp.Regexp // Cache compiled regexes
+	regexCacheMu sync.RWMutex              // Mutex for thread-safe cache access
 }
 
 // NewSchemaValidator creates a new schema validator
 func NewSchemaValidator(strictMode bool) *SchemaValidator {
 	return &SchemaValidator{
 		strictMode: strictMode,
+		regexCache: make(map[string]*regexp.Regexp),
 	}
 }
 
@@ -129,11 +134,15 @@ func (v *SchemaValidator) validateString(fieldName string, value interface{}, sc
 		}
 	}
 
-	// Pattern (regex) - simplified check
+	// Pattern (regex) validation
 	if pattern, ok := schema["pattern"].(string); ok && pattern != "" {
-		// Basic validation - in production, use regexp package
-		_ = pattern // Avoid unused variable
-		// TODO: Implement regex validation
+		re, err := v.getCompiledRegex(pattern)
+		if err != nil {
+			return fmt.Errorf("field '%s': invalid regex pattern '%s': %w", fieldName, pattern, err)
+		}
+		if !re.MatchString(str) {
+			return fmt.Errorf("field '%s': value '%s' does not match pattern '%s'", fieldName, str, pattern)
+		}
 	}
 
 	// Enum
@@ -278,6 +287,30 @@ func getJSONType(value interface{}) string {
 	default:
 		return reflect.TypeOf(value).Kind().String()
 	}
+}
+
+// getCompiledRegex returns a cached compiled regex or compiles a new one
+func (v *SchemaValidator) getCompiledRegex(pattern string) (*regexp.Regexp, error) {
+	// Check cache first with read lock
+	v.regexCacheMu.RLock()
+	if re, exists := v.regexCache[pattern]; exists {
+		v.regexCacheMu.RUnlock()
+		return re, nil
+	}
+	v.regexCacheMu.RUnlock()
+
+	// Compile the regex
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, err
+	}
+
+	// Store in cache with write lock
+	v.regexCacheMu.Lock()
+	v.regexCache[pattern] = re
+	v.regexCacheMu.Unlock()
+
+	return re, nil
 }
 
 // isTypeCompatible checks if actual type is compatible with expected type

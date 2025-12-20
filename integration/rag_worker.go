@@ -15,6 +15,17 @@ import (
 	"github.com/Ranganaths/minion/vectorstore"
 )
 
+// getInputMap safely extracts the input map from task.Input
+func getInputMap(task *multiagent.Task) map[string]interface{} {
+	if task.Input == nil {
+		return nil
+	}
+	if m, ok := task.Input.(map[string]interface{}); ok {
+		return m
+	}
+	return nil
+}
+
 // RAGWorker is a multi-agent worker that uses RAG for knowledge-grounded responses
 type RAGWorker struct {
 	pipeline    *rag.Pipeline
@@ -86,9 +97,12 @@ func (w *RAGWorker) HandleTask(ctx context.Context, task *multiagent.Task) (inte
 	}
 
 	// Check if task includes documents to add
-	if docs, ok := task.Input["documents"].([]interface{}); ok {
-		if err := w.addDocumentsFromInput(ctx, docs); err != nil {
-			return nil, fmt.Errorf("failed to add documents: %w", err)
+	inputMap := getInputMap(task)
+	if inputMap != nil {
+		if docs, ok := inputMap["documents"].([]interface{}); ok {
+			if err := w.addDocumentsFromInput(ctx, docs); err != nil {
+				return nil, fmt.Errorf("failed to add documents: %w", err)
+			}
 		}
 	}
 
@@ -110,18 +124,21 @@ func (w *RAGWorker) HandleTask(ctx context.Context, task *multiagent.Task) (inte
 
 // extractQuery gets the query from task input
 func (w *RAGWorker) extractQuery(task *multiagent.Task) (string, error) {
-	// Try different input keys
-	if query, ok := task.Input["query"].(string); ok {
-		return query, nil
-	}
-	if question, ok := task.Input["question"].(string); ok {
-		return question, nil
-	}
-	if text, ok := task.Input["text"].(string); ok {
-		return text, nil
-	}
-	if input, ok := task.Input["input"].(string); ok {
-		return input, nil
+	inputMap := getInputMap(task)
+	if inputMap != nil {
+		// Try different input keys
+		if query, ok := inputMap["query"].(string); ok {
+			return query, nil
+		}
+		if question, ok := inputMap["question"].(string); ok {
+			return question, nil
+		}
+		if text, ok := inputMap["text"].(string); ok {
+			return text, nil
+		}
+		if input, ok := inputMap["input"].(string); ok {
+			return input, nil
+		}
 	}
 
 	// Use task description as fallback
@@ -269,9 +286,12 @@ func (w *ChainWorker) HandleTask(ctx context.Context, task *multiagent.Task) (in
 	// Convert task input to chain input format
 	inputs := make(map[string]any)
 
-	// Copy all task inputs
-	for k, v := range task.Input {
-		inputs[k] = v
+	// Copy all task inputs if input is a map
+	inputMap := getInputMap(task)
+	if inputMap != nil {
+		for k, v := range inputMap {
+			inputs[k] = v
+		}
 	}
 
 	// Add task metadata as potential inputs
@@ -374,15 +394,24 @@ func NewRetrieverWorker(cfg RetrieverWorkerConfig) (*RetrieverWorker, error) {
 // HandleTask implements the TaskHandler interface
 func (w *RetrieverWorker) HandleTask(ctx context.Context, task *multiagent.Task) (interface{}, error) {
 	// Handle different operations based on task
-	operation, _ := task.Input["operation"].(string)
+	inputMap := getInputMap(task)
+	operation := ""
+	if inputMap != nil {
+		if op, ok := inputMap["operation"].(string); ok {
+			operation = op
+		}
+	}
 
 	switch operation {
 	case "add", "index":
 		return w.handleAddDocuments(ctx, task)
 	case "delete", "remove":
 		return w.handleDeleteDocuments(ctx, task)
-	default:
+	case "search", "query", "":
+		// Default to search for empty or search-related operations
 		return w.handleSearch(ctx, task)
+	default:
+		return nil, fmt.Errorf("unknown operation: %s (valid: add, index, delete, remove, search, query)", operation)
 	}
 }
 
@@ -407,7 +436,12 @@ func (w *RetrieverWorker) handleSearch(ctx context.Context, task *multiagent.Tas
 
 // handleAddDocuments handles document indexing
 func (w *RetrieverWorker) handleAddDocuments(ctx context.Context, task *multiagent.Task) (interface{}, error) {
-	texts, ok := task.Input["texts"].([]interface{})
+	inputMap := getInputMap(task)
+	if inputMap == nil {
+		return nil, fmt.Errorf("input map not provided")
+	}
+
+	texts, ok := inputMap["texts"].([]interface{})
 	if !ok {
 		return nil, fmt.Errorf("texts not provided")
 	}
@@ -432,7 +466,12 @@ func (w *RetrieverWorker) handleAddDocuments(ctx context.Context, task *multiage
 
 // handleDeleteDocuments handles document deletion
 func (w *RetrieverWorker) handleDeleteDocuments(ctx context.Context, task *multiagent.Task) (interface{}, error) {
-	ids, ok := task.Input["ids"].([]interface{})
+	inputMap := getInputMap(task)
+	if inputMap == nil {
+		return nil, fmt.Errorf("input map not provided")
+	}
+
+	ids, ok := inputMap["ids"].([]interface{})
 	if !ok {
 		return nil, fmt.Errorf("ids not provided")
 	}
@@ -457,11 +496,14 @@ func (w *RetrieverWorker) handleDeleteDocuments(ctx context.Context, task *multi
 
 // extractQuery gets the query from task input
 func (w *RetrieverWorker) extractQuery(task *multiagent.Task) (string, error) {
-	if query, ok := task.Input["query"].(string); ok {
-		return query, nil
-	}
-	if question, ok := task.Input["question"].(string); ok {
-		return question, nil
+	inputMap := getInputMap(task)
+	if inputMap != nil {
+		if query, ok := inputMap["query"].(string); ok {
+			return query, nil
+		}
+		if question, ok := inputMap["question"].(string); ok {
+			return question, nil
+		}
 	}
 	if task.Description != "" {
 		return task.Description, nil

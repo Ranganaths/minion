@@ -240,3 +240,19 @@ func (l *NoOpLogger) Warn(msg string, fields ...Field)  {}
 func (l *NoOpLogger) Error(msg string, fields ...Field) {}
 func (l *NoOpLogger) With(fields ...Field) Logger       { return l }
 func (l *NoOpLogger) WithContext(ctx context.Context) Logger { return l }
+
+// Global logger instance
+var globalLogger Logger
+
+// GetLogger returns the global logger
+func GetLogger() Logger {
+	if globalLogger == nil {
+		globalLogger = NewLogger(DefaultLoggerConfig())
+	}
+	return globalLogger
+}
+
+// SetGlobalLogger sets the global logger
+func SetGlobalLogger(logger Logger) {
+	globalLogger = logger
+}

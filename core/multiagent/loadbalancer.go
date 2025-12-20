@@ -96,7 +96,7 @@ var (
 type RoundRobinBalancer struct {
 	mu      sync.Mutex
 	counter int
-	logger  *observability.Logger
+	logger  observability.Logger
 }
 
 func NewRoundRobinBalancer() *RoundRobinBalancer {
@@ -144,7 +144,7 @@ func (rb *RoundRobinBalancer) GetStats() map[string]interface{} {
 type LeastLoadedBalancer struct {
 	mu         sync.RWMutex
 	taskCounts map[string]int // workerID -> active task count
-	logger     *observability.Logger
+	logger     observability.Logger
 }
 
 func NewLeastLoadedBalancer() *LeastLoadedBalancer {
@@ -213,7 +213,7 @@ func (lb *LeastLoadedBalancer) GetStats() map[string]interface{} {
 // ===== Random Balancer =====
 
 type RandomBalancer struct {
-	logger *observability.Logger
+	logger observability.Logger
 	rng    *rand.Rand
 	mu     sync.Mutex
 }
@@ -258,7 +258,7 @@ type CapabilityBalancer struct {
 	mu      sync.RWMutex
 	weights map[string]map[string]float64 // taskType -> workerID -> weight
 	config  *LoadBalancerConfig
-	logger  *observability.Logger
+	logger  observability.Logger
 }
 
 func NewCapabilityBalancer(config *LoadBalancerConfig) *CapabilityBalancer {
@@ -388,7 +388,7 @@ type LatencyBasedBalancer struct {
 	mu              sync.RWMutex
 	latencyHistory  map[string][]time.Duration // workerID -> latencies
 	config          *LoadBalancerConfig
-	logger          *observability.Logger
+	logger          observability.Logger
 }
 
 func NewLatencyBasedBalancer(config *LoadBalancerConfig) *LatencyBasedBalancer {
@@ -488,7 +488,7 @@ type WeightedRoundRobinBalancer struct {
 	weights      map[string]int // workerID -> weight
 	currentIndex int
 	currentWeight int
-	logger       *observability.Logger
+	logger       observability.Logger
 }
 
 func NewWeightedRoundRobinBalancer() *WeightedRoundRobinBalancer {

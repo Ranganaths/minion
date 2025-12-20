@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/Ranganaths/minion/observability"
@@ -351,11 +353,57 @@ Include sources and evidence for your claims.`
 		return nil, fmt.Errorf("research failed: %w", err)
 	}
 
+	// Extract sources from the response text
+	sources := extractSourcesFromText(resp.Text)
+
 	return map[string]interface{}{
 		"findings":    resp.Text,
-		"sources":     []string{}, // TODO: Extract sources from response
+		"sources":     sources,
 		"tokens_used": resp.TokensUsed,
 	}, nil
+}
+
+// extractSourcesFromText extracts URLs and citations from text
+func extractSourcesFromText(text string) []string {
+	sources := make([]string, 0)
+	seen := make(map[string]bool)
+
+	// Pattern for URLs
+	urlPattern := regexp.MustCompile(`https?://[^\s\)\]\>\"\']+`)
+	urls := urlPattern.FindAllString(text, -1)
+	for _, url := range urls {
+		// Clean up trailing punctuation
+		url = strings.TrimRight(url, ".,;:!?")
+		if !seen[url] {
+			sources = append(sources, url)
+			seen[url] = true
+		}
+	}
+
+	// Pattern for academic-style citations [Author, Year] or (Author, Year)
+	citationPattern := regexp.MustCompile(`[\[\(]([A-Z][a-zA-Z]+(?:\s+(?:et\s+al\.?|&|and)\s+[A-Z][a-zA-Z]+)*,?\s*\d{4}[a-z]?)[\]\)]`)
+	citations := citationPattern.FindAllStringSubmatch(text, -1)
+	for _, match := range citations {
+		if len(match) > 1 && !seen[match[1]] {
+			sources = append(sources, match[1])
+			seen[match[1]] = true
+		}
+	}
+
+	// Pattern for numbered references like [1], [2]
+	refPattern := regexp.MustCompile(`\[(\d+)\]`)
+	refs := refPattern.FindAllStringSubmatch(text, -1)
+	for _, match := range refs {
+		if len(match) > 1 {
+			ref := "Reference " + match[1]
+			if !seen[ref] {
+				sources = append(sources, ref)
+				seen[ref] = true
+			}
+		}
+	}
+
+	return sources
 }
 
 // GetCapabilities returns researcher capabilities
@@ -447,11 +495,69 @@ Provide constructive feedback and specific recommendations for improvement.`
 		return nil, fmt.Errorf("review failed: %w", err)
 	}
 
+	// Extract rating from the review text
+	rating := extractRatingFromText(resp.Text)
+
 	return map[string]interface{}{
 		"review":      resp.Text,
-		"rating":      "pending", // TODO: Parse rating from response
+		"rating":      rating,
 		"tokens_used": resp.TokensUsed,
 	}, nil
+}
+
+// extractRatingFromText extracts a rating from review text
+func extractRatingFromText(text string) string {
+	lowerText := strings.ToLower(text)
+
+	// Look for explicit numeric ratings (e.g., "8/10", "4 out of 5")
+	numericPattern := regexp.MustCompile(`(\d+(?:\.\d+)?)\s*(?:\/|out\s+of)\s*(\d+)`)
+	if matches := numericPattern.FindStringSubmatch(lowerText); len(matches) > 2 {
+		return matches[1] + "/" + matches[2]
+	}
+
+	// Look for star ratings (e.g., "★★★★☆" or "4 stars")
+	starPattern := regexp.MustCompile(`(\d+(?:\.\d+)?)\s*stars?`)
+	if matches := starPattern.FindStringSubmatch(lowerText); len(matches) > 1 {
+		return matches[1] + " stars"
+	}
+
+	// Look for grade ratings (e.g., "Grade: A", "Rating: B+")
+	gradePattern := regexp.MustCompile(`(?:grade|rating)[\s:]+([A-F][+-]?)`)
+	if matches := gradePattern.FindStringSubmatch(lowerText); len(matches) > 1 {
+		return strings.ToUpper(matches[1])
+	}
+
+	// Analyze sentiment for qualitative rating
+	positiveIndicators := []string{
+		"excellent", "outstanding", "exceptional", "perfect", "superb",
+		"great", "very good", "high quality", "well done", "impressive",
+	}
+	negativeIndicators := []string{
+		"poor", "bad", "terrible", "awful", "unacceptable",
+		"needs improvement", "inadequate", "below standard", "unsatisfactory",
+	}
+	neutralIndicators := []string{
+		"acceptable", "adequate", "satisfactory", "average", "okay", "ok",
+		"decent", "fair", "moderate",
+	}
+
+	for _, indicator := range positiveIndicators {
+		if strings.Contains(lowerText, indicator) {
+			return "positive"
+		}
+	}
+	for _, indicator := range negativeIndicators {
+		if strings.Contains(lowerText, indicator) {
+			return "needs_improvement"
+		}
+	}
+	for _, indicator := range neutralIndicators {
+		if strings.Contains(lowerText, indicator) {
+			return "acceptable"
+		}
+	}
+
+	return "reviewed"
 }
 
 // GetCapabilities returns reviewer capabilities

@@ -4,7 +4,7 @@ Welcome to the Minion framework learning path! These tutorials will take you fro
 
 ## ✅ Tutorial Completion Status
 
-**All tutorials are now complete!** Total learning time: ~11 hours
+**All tutorials are now complete!** Total learning time: ~14 hours
 
 | # | Tutorial | Duration | Status |
 |---|----------|----------|--------|
@@ -17,6 +17,9 @@ Welcome to the Minion framework learning path! These tutorials will take you fro
 | 7 | Building a Virtual SDR | 2 hours | ✅ |
 | 8 | Custom MCP Server | 1.5 hours | ✅ |
 | 9 | Advanced Patterns | 2 hours | ✅ |
+| 10 | LLM Providers | 45 min | ✅ NEW |
+| 11 | RAG & Chain Pipelines | 1 hour | ✅ NEW |
+| 12 | Multi-Agent Systems | 1.5 hours | ✅ NEW |
 
 **Quick Reference Materials:**
 - [Cheat Sheet](CHEAT_SHEET.md) - One-page reference
@@ -160,6 +163,53 @@ Master advanced architectural patterns:
 - Saga pattern for distributed transactions
 
 **What you'll build**: Production-grade patterns library
+
+---
+
+### 🆕 New Feature Tutorials
+
+#### [Tutorial 10: LLM Providers](10-llm-providers.md)
+**Duration**: 45 minutes
+**Prerequisites**: Tutorial 1
+
+Configure and use different LLM providers:
+- OpenAI GPT-4 integration
+- Anthropic Claude support
+- TupleLeap for cost-effective AI
+- Ollama for local/private models
+- Switching providers dynamically
+
+**What you'll build**: Multi-provider agent system
+
+---
+
+#### [Tutorial 11: RAG & Chain Pipelines](11-rag-chains.md)
+**Duration**: 1 hour
+**Prerequisites**: Tutorial 1, Tutorial 10
+
+Build knowledge-augmented AI systems:
+- Creating RAG pipelines
+- Vector store integration
+- LangChain-style chains
+- Sequential and parallel chains
+- Document ingestion and retrieval
+
+**What you'll build**: Knowledge-base powered Q&A system
+
+---
+
+#### [Tutorial 12: Multi-Agent Systems](12-multi-agent.md)
+**Duration**: 1.5 hours
+**Prerequisites**: All previous tutorials
+
+Orchestrate multiple AI agents:
+- Coordinator and worker patterns
+- KQML inter-agent protocol
+- Task decomposition and delegation
+- Specialized workers (Coder, Analyst, Researcher)
+- Progress tracking and ledgers
+
+**What you'll build**: Collaborative multi-agent research system
 
 ---
 
@@ -335,6 +385,10 @@ After completing these tutorials, you'll be able to:
 ✅ Monitor and scale agent systems
 ✅ Build custom MCP servers
 ✅ Design complex multi-agent systems
+✅ Use multiple LLM providers (OpenAI, Anthropic, TupleLeap, Ollama)
+✅ Build RAG pipelines for knowledge-augmented AI
+✅ Create LangChain-style processing chains
+✅ Orchestrate multi-agent collaborative systems
 
 ## 🤝 Contributing
 

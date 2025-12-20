@@ -108,7 +108,7 @@ type Autoscaler struct {
 	policy             *ScalingPolicy
 	pool               *WorkerPool
 	metrics            *observability.MetricsCollector
-	logger             *observability.Logger
+	logger             observability.Logger
 
 	// State tracking
 	mu                 sync.RWMutex

@@ -286,9 +286,8 @@ func (t *CostTracker) checkBudgetAlert() {
 	dailySummary := t.GetDailySummary()
 
 	if dailySummary.TotalCost > t.config.BudgetAlertThreshold {
-		// Log alert using the logger
-		logger := GetLogger().WithCategory(CategoryMetrics)
-		logger.Warnf("Daily budget threshold exceeded: $%.2f / $%.2f",
+		// Log alert using fmt (logger may not be available in this context)
+		fmt.Printf("[WARN] Daily budget threshold exceeded: $%.2f / $%.2f\n",
 			dailySummary.TotalCost,
 			t.config.BudgetAlertThreshold,
 		)

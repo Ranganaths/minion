@@ -57,7 +57,7 @@ type WorkerPool struct {
 
 	// Metrics
 	metrics *observability.MetricsCollector
-	logger  *observability.Logger
+	logger  observability.Logger
 
 	// Control
 	ctx     context.Context

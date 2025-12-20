@@ -12,10 +12,29 @@ import (
 
 // httpTransport implements MCP over HTTP
 type httpTransport struct {
-	config    *ClientConfig
-	client    *http.Client
-	requestID atomic.Int64
-	connected bool
+	config      *ClientConfig
+	client      *http.Client
+	requestID   atomic.Int64
+	connected   bool
+	authHeaders map[string]string // Pre-computed auth headers
+}
+
+// BearerAuthConfig contains bearer token authentication configuration
+type BearerAuthConfig struct {
+	Token string `json:"token"`
+}
+
+// APIKeyAuthConfig contains API key authentication configuration
+type APIKeyAuthConfig struct {
+	Key       string `json:"key"`
+	HeaderKey string `json:"header_key"` // Header name, defaults to "X-API-Key"
+}
+
+// OAuthAuthConfig contains OAuth authentication configuration
+type OAuthAuthConfig struct {
+	AccessToken  string `json:"access_token"`
+	TokenType    string `json:"token_type"` // Usually "Bearer"
+	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
 // newHTTPTransport creates a new HTTP transport
@@ -28,12 +47,95 @@ func newHTTPTransport(config *ClientConfig) (Transport, error) {
 		Timeout: config.RequestTimeout,
 	}
 
-	// TODO: Add authentication support
+	// Build authentication headers
+	authHeaders, err := buildAuthHeaders(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to configure authentication: %w", err)
+	}
 
 	return &httpTransport{
-		config: config,
-		client: httpClient,
+		config:      config,
+		client:      httpClient,
+		authHeaders: authHeaders,
 	}, nil
+}
+
+// buildAuthHeaders builds authentication headers based on config
+func buildAuthHeaders(config *ClientConfig) (map[string]string, error) {
+	headers := make(map[string]string)
+
+	switch config.AuthType {
+	case AuthNone, "":
+		// No authentication required
+		return headers, nil
+
+	case AuthBearer:
+		bearerConfig, ok := config.AuthConfig.(*BearerAuthConfig)
+		if !ok {
+			// Try map conversion for flexibility
+			if m, ok := config.AuthConfig.(map[string]interface{}); ok {
+				if token, ok := m["token"].(string); ok {
+					bearerConfig = &BearerAuthConfig{Token: token}
+				}
+			}
+		}
+		if bearerConfig == nil || bearerConfig.Token == "" {
+			return nil, fmt.Errorf("bearer token is required for bearer authentication")
+		}
+		headers["Authorization"] = "Bearer " + bearerConfig.Token
+		return headers, nil
+
+	case AuthAPIKey:
+		apiKeyConfig, ok := config.AuthConfig.(*APIKeyAuthConfig)
+		if !ok {
+			// Try map conversion for flexibility
+			if m, ok := config.AuthConfig.(map[string]interface{}); ok {
+				apiKeyConfig = &APIKeyAuthConfig{}
+				if key, ok := m["key"].(string); ok {
+					apiKeyConfig.Key = key
+				}
+				if headerKey, ok := m["header_key"].(string); ok {
+					apiKeyConfig.HeaderKey = headerKey
+				}
+			}
+		}
+		if apiKeyConfig == nil || apiKeyConfig.Key == "" {
+			return nil, fmt.Errorf("API key is required for API key authentication")
+		}
+		headerKey := apiKeyConfig.HeaderKey
+		if headerKey == "" {
+			headerKey = "X-API-Key" // Default header name
+		}
+		headers[headerKey] = apiKeyConfig.Key
+		return headers, nil
+
+	case AuthOAuth:
+		oauthConfig, ok := config.AuthConfig.(*OAuthAuthConfig)
+		if !ok {
+			// Try map conversion for flexibility
+			if m, ok := config.AuthConfig.(map[string]interface{}); ok {
+				oauthConfig = &OAuthAuthConfig{}
+				if token, ok := m["access_token"].(string); ok {
+					oauthConfig.AccessToken = token
+				}
+				if tokenType, ok := m["token_type"].(string); ok {
+					oauthConfig.TokenType = tokenType
+				}
+			}
+		}
+		if oauthConfig == nil || oauthConfig.AccessToken == "" {
+			return nil, fmt.Errorf("access token is required for OAuth authentication")
+		}
+		tokenType := oauthConfig.TokenType
+		if tokenType == "" {
+			tokenType = "Bearer"
+		}
+		headers["Authorization"] = tokenType + " " + oauthConfig.AccessToken
+		return headers, nil
+
+	default:
+		return nil, fmt.Errorf("unsupported authentication type: %s", config.AuthType)
+	}
 }
 
 // Connect establishes the connection
@@ -74,6 +176,11 @@ func (t *httpTransport) SendRequest(ctx context.Context, method string, params i
 	}
 
 	httpReq.Header.Set("Content-Type", "application/json")
+
+	// Add authentication headers
+	for key, value := range t.authHeaders {
+		httpReq.Header.Set(key, value)
+	}
 
 	// Send request
 	resp, err := t.client.Do(httpReq)

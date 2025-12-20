@@ -61,6 +61,8 @@ type Framework interface {
 	// Tool operations (defined in tools package)
 	RegisterTool(tool interface{}) error
 	GetToolsForAgent(agent *models.Agent) []interface{}
+	ExecuteTool(ctx context.Context, toolName string, params map[string]interface{}) (*models.ToolOutput, error)
+	ListTools() []string
 
 	// MCP operations (Model Context Protocol)
 	ConnectMCPServer(ctx context.Context, config interface{}) error

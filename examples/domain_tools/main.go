@@ -15,7 +15,8 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Minion Domain-Specific Tools Demo ===\n")
+	fmt.Println("=== Minion Domain-Specific Tools Demo ===")
+	fmt.Println()
 
 	// Get OpenAI API key from environment
 	apiKey := os.Getenv("OPENAI_API_KEY")
@@ -35,24 +36,30 @@ func main() {
 	if err := domains.RegisterAllDomainTools(framework); err != nil {
 		log.Fatalf("Failed to register tools: %v", err)
 	}
-	fmt.Println("✅ Tools registered successfully\n")
+	fmt.Println("✅ Tools registered successfully")
+	fmt.Println()
 
 	ctx := context.Background()
 
 	// Demo 1: Sales Analyst Agent
-	fmt.Println("=== Demo 1: Sales Analyst Agent ===\n")
+	fmt.Println("=== Demo 1: Sales Analyst Agent ===")
+	fmt.Println()
 	if err := demoSalesAnalyst(ctx, framework); err != nil {
 		log.Printf("Sales analyst demo error: %v", err)
 	}
 
 	// Demo 2: Marketing Analyst Agent
-	fmt.Println("\n=== Demo 2: Marketing Analyst Agent ===\n")
+	fmt.Println()
+	fmt.Println("=== Demo 2: Marketing Analyst Agent ===")
+	fmt.Println()
 	if err := demoMarketingAnalyst(ctx, framework); err != nil {
 		log.Printf("Marketing analyst demo error: %v", err)
 	}
 
 	// Demo 3: Tool Capability Filtering
-	fmt.Println("\n=== Demo 3: Tool Capability Filtering ===\n")
+	fmt.Println()
+	fmt.Println("=== Demo 3: Tool Capability Filtering ===")
+	fmt.Println()
 	if err := demoCapabilityFiltering(ctx, framework); err != nil {
 		log.Printf("Capability filtering demo error: %v", err)
 	}
@@ -258,7 +265,8 @@ func demoMarketingAnalyst(ctx context.Context, framework core.Framework) error {
 }
 
 func demoCapabilityFiltering(ctx context.Context, framework core.Framework) error {
-	fmt.Println("Demonstrating capability-based tool filtering...\n")
+	fmt.Println("Demonstrating capability-based tool filtering...")
+	fmt.Println()
 
 	// Create agent with limited capabilities
 	limitedAgent, err := framework.CreateAgent(ctx, &models.CreateAgentRequest{
@@ -348,5 +356,5 @@ func printToolOutput(output *models.ToolOutput) {
 		}
 	}
 
-	fmt.Printf("Execution Time: %s\n", output.ExecutionTime)
+	fmt.Printf("Execution Time: %dms\n", output.ExecutionTime)
 }

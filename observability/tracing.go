@@ -34,6 +34,14 @@ type Tracer struct {
 	config   TracingConfig
 }
 
+// Context keys for tracing
+type contextKey string
+
+const (
+	TraceIDKey contextKey = "trace_id"
+	SpanIDKey  contextKey = "span_id"
+)
+
 // SpanKind represents the type of span
 type SpanKind string
 
@@ -115,7 +123,7 @@ func NewTracer(config TracingConfig) (*Tracer, error) {
 		}
 	case "stdout":
 		// For development: log to stdout
-		exporter, err = stdoutExporter()
+		exporter, err = newStdoutExporter()
 		if err != nil {
 			return nil, fmt.Errorf("failed to create stdout exporter: %w", err)
 		}
@@ -366,7 +374,7 @@ func (e *stdoutExporter) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func stdoutExporter() (sdktrace.SpanExporter, error) {
+func newStdoutExporter() (sdktrace.SpanExporter, error) {
 	return &stdoutExporter{}, nil
 }
 

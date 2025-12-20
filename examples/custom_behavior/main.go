@@ -182,7 +182,7 @@ func (b *CodeReviewBehavior) ProcessOutput(ctx context.Context, agent *models.Ag
 
 func main() {
 	fmt.Println("🎨 Agent Framework - Custom Behavior Example")
-	fmt.Println("============================================\n")
+	fmt.Println("============================================")
 
 	// Check for OpenAI API key
 	apiKey := os.Getenv("OPENAI_API_KEY")
@@ -197,7 +197,7 @@ func main() {
 		core.WithLLMProvider(llm.NewOpenAI(apiKey)),
 	)
 	defer framework.Close()
-	fmt.Println("   ✓ Framework initialized\n")
+	fmt.Println("   ✓ Framework initialized")
 
 	// 2. Register custom behaviors
 	fmt.Println("2. Registering custom behaviors...")
@@ -215,7 +215,7 @@ func main() {
 	if err := framework.RegisterBehavior("code_review", &CodeReviewBehavior{}); err != nil {
 		log.Fatalf("Failed to register code review behavior: %v", err)
 	}
-	fmt.Println("   ✓ Registered: code_review\n")
+	fmt.Println("   ✓ Registered: code_review")
 
 	// 3. Create agent with sentiment analysis behavior
 	fmt.Println("3. Creating sentiment analysis agent...")
@@ -296,7 +296,7 @@ func main() {
 	})
 
 	// 6. Execute agents with custom behaviors
-	fmt.Println("\n6. Executing agents with custom behaviors...\n")
+	fmt.Println("\n6. Executing agents with custom behaviors...")
 
 	// Sentiment analysis
 	fmt.Println("   === Sentiment Analysis Agent ===")

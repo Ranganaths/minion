@@ -156,6 +156,42 @@ func (tl *TaskLedger) GetHistory() []string {
 	return history
 }
 
+// DeleteTask deletes a task
+func (tl *TaskLedger) DeleteTask(ctx context.Context, taskID string) error {
+	tl.mu.Lock()
+	defer tl.mu.Unlock()
+
+	if _, exists := tl.tasks[taskID]; !exists {
+		return fmt.Errorf("task %s not found", taskID)
+	}
+
+	delete(tl.tasks, taskID)
+
+	// Remove from history
+	newHistory := make([]string, 0, len(tl.taskHistory))
+	for _, id := range tl.taskHistory {
+		if id != taskID {
+			newHistory = append(newHistory, id)
+		}
+	}
+	tl.taskHistory = newHistory
+
+	return nil
+}
+
+// ListTasks returns all tasks
+func (tl *TaskLedger) ListTasks(ctx context.Context) []*Task {
+	tl.mu.RLock()
+	defer tl.mu.RUnlock()
+
+	tasks := make([]*Task, 0, len(tl.tasks))
+	for _, task := range tl.tasks {
+		tasks = append(tasks, task)
+	}
+
+	return tasks
+}
+
 // ProgressEntry represents a single step in execution progress
 type ProgressEntry struct {
 	ID          string                 `json:"id"`
@@ -248,6 +284,17 @@ func (pl *ProgressLedger) GetLatestEntry(ctx context.Context, taskID string) (*P
 	}
 
 	return entries[len(entries)-1], nil
+}
+
+// RecordProgress records a progress update (convenience method matching LedgerBackend interface)
+func (pl *ProgressLedger) RecordProgress(ctx context.Context, taskID, agentID string, status TaskStatus, message string) error {
+	entry := &ProgressEntry{
+		TaskID:      taskID,
+		AgentID:     agentID,
+		Status:      string(status),
+		Description: message,
+	}
+	return pl.AddEntry(ctx, entry)
 }
 
 // Clear clears all progress for a task

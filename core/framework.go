@@ -259,6 +259,25 @@ func (f *FrameworkImpl) GetToolsForAgent(agent *models.Agent) []interface{} {
 	return result
 }
 
+// ExecuteTool executes a tool by name with the given parameters
+func (f *FrameworkImpl) ExecuteTool(ctx context.Context, toolName string, params map[string]interface{}) (*models.ToolOutput, error) {
+	input := &models.ToolInput{
+		Params: params,
+	}
+
+	return f.toolRegistry.Execute(ctx, toolName, input)
+}
+
+// GetTool retrieves a tool by name
+func (f *FrameworkImpl) GetTool(name string) (tools.Tool, error) {
+	return f.toolRegistry.Get(name)
+}
+
+// ListTools returns all registered tool names
+func (f *FrameworkImpl) ListTools() []string {
+	return f.toolRegistry.List()
+}
+
 // Execute executes an agent with the given input
 func (f *FrameworkImpl) Execute(ctx context.Context, agentID string, input *models.Input) (*models.Output, error) {
 	if f.store == nil {

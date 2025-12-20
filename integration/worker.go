@@ -330,15 +330,21 @@ func NewStandaloneRetrieverWorker(cfg StandaloneRetrieverWorkerConfig) (*Standal
 
 // HandleTask implements the TaskHandler interface
 func (w *StandaloneRetrieverWorker) HandleTask(ctx context.Context, task *Task) (interface{}, error) {
-	operation, _ := task.Input["operation"].(string)
+	operation := ""
+	if op, ok := task.Input["operation"].(string); ok {
+		operation = op
+	}
 
 	switch operation {
 	case "add", "index":
 		return w.handleAddDocuments(ctx, task)
 	case "delete", "remove":
 		return w.handleDeleteDocuments(ctx, task)
-	default:
+	case "search", "query", "":
+		// Default to search for empty or search-related operations
 		return w.handleSearch(ctx, task)
+	default:
+		return nil, fmt.Errorf("unknown operation: %s (valid: add, index, delete, remove, search, query)", operation)
 	}
 }
 

@@ -1458,7 +1458,7 @@ func subtractArrays(arr1, arr2 []float64) []float64 {
 
 func optimizePaymentTerms(accountsData map[string]interface{}) map[string]interface{} {
 	currentDSO, _ := accountsData["current_dso"].(float64) // Days Sales Outstanding
-	avgInvoiceValue, _ := accountsData["avg_invoice_value"].(float64)
+	_, _ = accountsData["avg_invoice_value"].(float64)     // avg_invoice_value - reserved for future use
 	annualRevenue, _ := accountsData["annual_revenue"].(float64)
 
 	// Recommendations for payment terms

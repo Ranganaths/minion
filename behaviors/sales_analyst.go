@@ -63,7 +63,7 @@ func (b *SalesAnalystBehavior) GetSystemPrompt(agent *models.Agent) string {
 
 **Best Practices**:
 - Always format currency values with $ and proper decimals
-- Show percentages with % symbol and 1-2 decimal places
+- Show percentages with %% symbol and 1-2 decimal places
 - Include time periods in chart titles (e.g., "Q4 2024")
 - Provide context: compare to previous periods, industry benchmarks
 - Highlight anomalies, trends, and actionable insights

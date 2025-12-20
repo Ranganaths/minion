@@ -20,7 +20,9 @@ cd examples && ./run-all-examples.sh
 | **Total Tools** | 80+ |
 | **Domains** | 16 |
 | **Platform Integrations** | 40+ |
-| **Ready Examples** | 3 |
+| **Ready Examples** | 13 |
+| **LLM Providers** | 4 |
+| **Multi-Agent Workers** | 5+ |
 
 ## 🛠️ Tool Categories
 
@@ -41,6 +43,56 @@ cd examples && ./run-all-examples.sh
 
 ### Integration (12 tools)
 - API, File Parsing, Webhooks, Cloud Storage
+
+## 🤖 LLM Providers
+
+```go
+// OpenAI
+provider := llm.NewOpenAI(os.Getenv("OPENAI_API_KEY"))
+
+// Anthropic Claude
+provider := llm.NewAnthropic(os.Getenv("ANTHROPIC_API_KEY"))
+
+// TupleLeap (cost-effective)
+provider := llm.NewTupleLeap(os.Getenv("TUPLELEAP_API_KEY"))
+
+// Ollama (local)
+provider := llm.NewOllama("http://localhost:11434")
+```
+
+## 🔗 Chain & RAG
+
+```go
+// LLM Chain
+chain, _ := chain.NewLLMChain(chain.LLMChainConfig{
+    LLM:            provider,
+    PromptTemplate: "Summarize: {{.input}}",
+})
+
+// RAG Pipeline
+pipeline, _ := rag.NewPipeline(rag.PipelineConfig{
+    Embedder:    embedder,
+    VectorStore: vectorStore,
+    LLM:         provider,
+    RetrieverK:  4,
+})
+```
+
+## 👥 Multi-Agent
+
+```go
+// Create coordinator
+coordinator := multiagent.NewCoordinator(llmProvider, nil)
+coordinator.Initialize(ctx)
+
+// Execute complex task
+result, _ := coordinator.ExecuteTask(ctx, &multiagent.TaskRequest{
+    Name:        "Analysis Task",
+    Description: "Analyze and report",
+    Type:        "analysis",
+    Priority:    multiagent.PriorityHigh,
+})
+```
 
 ## 💡 Example Use Cases
 
@@ -211,6 +263,9 @@ Params: map[string]interface{}{
 ## 📚 Documentation
 
 - **Main Guide:** `README.md`
+- **LLM Providers:** `LLM_PROVIDERS.md`
+- **Multi-Agent Guide:** `core/multiagent/README.md`
+- **Tutorials:** `TUTORIALS.md`
 - **Tools Guide:** `TOOLS_GUIDE.md`
 - **Composio Tools:** `COMPOSIO_STYLE_TOOLS.md`
 - **Examples:** `examples/README.md`
@@ -235,6 +290,12 @@ go test ./...
 
 ```bash
 # .env file
+# LLM Providers
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+TUPLELEAP_API_KEY=...
+
+# Integration Services
 SLACK_BOT_TOKEN=xoxb-...
 JIRA_API_TOKEN=...
 GMAIL_API_KEY=...
@@ -251,12 +312,13 @@ TWILIO_AUTH_TOKEN=...
 
 ## 🎓 Learning Path
 
-1. ✅ Run examples
-2. ✅ Modify parameters
-3. ✅ Add new workflows
-4. ✅ Connect real APIs
-5. ✅ Build custom tools
-6. ✅ Deploy to production
+1. ✅ Run examples (`examples/basic/`)
+2. ✅ Configure LLM providers
+3. ✅ Build with tools & behaviors
+4. ✅ Create RAG pipelines
+5. ✅ Set up multi-agent systems
+6. ✅ Connect real APIs
+7. ✅ Deploy to production
 
 ## 🤝 Support
 

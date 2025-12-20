@@ -182,7 +182,8 @@ func (t *WeatherTool) CanExecute(agent *models.Agent) bool {
 
 func main() {
 	fmt.Println("🛠️  Agent Framework - Tool Integration Example")
-	fmt.Println("================================================\n")
+	fmt.Println("================================================")
+	fmt.Println()
 
 	// Check for OpenAI API key
 	apiKey := os.Getenv("OPENAI_API_KEY")
@@ -197,7 +198,8 @@ func main() {
 		core.WithLLMProvider(llm.NewOpenAI(apiKey)),
 	)
 	defer framework.Close()
-	fmt.Println("   ✓ Framework initialized\n")
+	fmt.Println("   ✓ Framework initialized")
+	fmt.Println()
 
 	// 2. Register tools
 	fmt.Println("2. Registering tools...")

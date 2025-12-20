@@ -1,8 +1,41 @@
-# Minion Framework - Integration Examples
+# Minion Framework - Examples
 
-This directory contains comprehensive, production-ready examples demonstrating how to integrate famous tools with Minion agents for real-world automation scenarios.
+This directory contains 13 comprehensive, production-ready examples demonstrating the full capabilities of the Minion agent framework.
 
-## 📚 Available Examples
+## 📚 All Examples
+
+### Core Framework Examples
+
+| Example | Description | Key Features |
+|---------|-------------|--------------|
+| **`basic/`** | Simple agent creation and execution | Agent lifecycle, LLM integration |
+| **`with_tools/`** | Custom tools with capability filtering | Tool registration, capability-based access |
+| **`custom_behavior/`** | Specialized agent behaviors | Custom behaviors, processing pipelines |
+
+### Multi-Agent System Examples
+
+| Example | Description | Key Features |
+|---------|-------------|--------------|
+| **`multiagent-basic/`** | Basic multi-agent coordinator | Orchestrator pattern, task decomposition |
+| **`multiagent-custom/`** | Custom worker agents | Specialized workers, custom handlers |
+| **`llm_worker/`** | LLM-powered worker agents | Worker integration, LLM task handling |
+
+### LLM Provider Examples
+
+| Example | Description | Key Features |
+|---------|-------------|--------------|
+| **`tupleleap_example/`** | TupleLeap AI integration | TupleLeap provider, multi-agent with TupleLeap |
+
+### Business Domain Examples
+
+| Example | Description | Key Features |
+|---------|-------------|--------------|
+| **`sales_agent/`** | Sales analyst with visualization | Sales behavior, chart tools |
+| **`domain_tools/`** | Domain-specific tools | Marketing, sales, analytics tools |
+
+---
+
+## 🏢 Business Automation Examples
 
 ### 1. 🚀 DevOps Automation (`devops-automation/`)
 **Technologies:** GitHub, Jira, Slack, Jenkins, Twilio

@@ -14,7 +14,7 @@ import (
 
 func main() {
 	fmt.Println("🤖 Agent Framework - Basic Example")
-	fmt.Println("===================================\n")
+	fmt.Println("===================================")
 
 	// Check for OpenAI API key
 	apiKey := os.Getenv("OPENAI_API_KEY")
@@ -29,7 +29,7 @@ func main() {
 		core.WithLLMProvider(llm.NewOpenAI(apiKey)),
 	)
 	defer framework.Close()
-	fmt.Println("   ✓ Framework initialized\n")
+	fmt.Println("   ✓ Framework initialized")
 
 	// 2. Create an agent
 	fmt.Println("2. Creating agent...")

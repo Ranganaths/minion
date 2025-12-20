@@ -1298,21 +1298,22 @@ func (c *CostTrackingProvider) GetStats() (totalCost float64, totalTokens int) {
 
 ## Roadmap
 
-### Q2 2024
-- [x] OpenAI support
-- [ ] Anthropic (Claude) - Implementation ready
-- [ ] Google Gemini - Implementation ready
-- [ ] Ollama - Implementation ready
-- [ ] Azure OpenAI - Implementation ready
+### Completed ✅
+- [x] OpenAI support (GPT-4, GPT-3.5-turbo)
+- [x] TupleLeap AI support
+- [x] Anthropic (Claude) support
+- [x] Ollama (local models) support
 
-### Q3 2024
-- [ ] Cohere support
-- [ ] Hugging Face Inference API
+### In Progress
+- [ ] Google Gemini - Implementation ready
+- [ ] Azure OpenAI - Implementation ready
 - [ ] Streaming responses
 - [ ] Function calling support
-- [ ] Embeddings support
 
-### Q4 2024
+### Planned
+- [ ] Cohere support
+- [ ] Hugging Face Inference API
+- [ ] Embeddings support
 - [ ] AWS Bedrock
 - [ ] Together AI
 - [ ] Replicate
@@ -1410,19 +1411,31 @@ func main() {
 ## Summary
 
 **Current Status:**
-- ✅ OpenAI fully supported
-- 🔨 4 additional providers ready to implement
-- 📋 6 more providers planned
+- ✅ **4 providers fully supported**: OpenAI, TupleLeap, Anthropic, Ollama
+- 🔨 **2 providers ready to implement**: Google Gemini, Azure OpenAI
+- 📋 **6+ more providers planned**
 
 **Philosophy:**
 - **Clean interface** - Easy to add providers
 - **Flexible** - Use any provider or mix multiple
 - **Production-ready** - Rate limiting, fallbacks, caching
 
-**Next Steps:**
-1. Choose providers needed for your use case
-2. Copy implementation code from this guide
-3. Test with your API keys
-4. Deploy to production
+**Quick Start:**
+```go
+// Choose your provider
+provider := llm.NewOpenAI(os.Getenv("OPENAI_API_KEY"))
+// or
+provider := llm.NewAnthropic(os.Getenv("ANTHROPIC_API_KEY"))
+// or
+provider := llm.NewTupleLeap(os.Getenv("TUPLELEAP_API_KEY"))
+// or
+provider := llm.NewOllama("http://localhost:11434")
+
+// Use with Minion framework
+framework := core.NewFramework(
+    core.WithLLMProvider(provider),
+    core.WithStorage(storage.NewInMemory()),
+)
+```
 
 For questions or contributions, see [CONTRIBUTING.md](CONTRIBUTING.md)

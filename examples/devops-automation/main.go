@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
+	"strings"
 	"time"
 
 	"github.com/Ranganaths/minion/core"
@@ -78,17 +78,22 @@ func main() {
 	log.Println("✅ DevOps automation completed successfully!")
 }
 
+func printSeparator(title string) {
+	sep := strings.Repeat("=", 60)
+	log.Println("\n" + sep)
+	log.Println(title)
+	log.Println(sep + "\n")
+}
+
 // runPullRequestWorkflow demonstrates GitHub → Jira → Slack integration
-func runPullRequestWorkflow(ctx context.Context, framework core.Framework) {
-	log.Println("\n" + "="*60)
-	log.Println("📝 WORKFLOW 1: Pull Request Automation")
-	log.Println("="*60 + "\n")
+func runPullRequestWorkflow(ctx context.Context, framework *core.FrameworkImpl) {
+	printSeparator("📝 WORKFLOW 1: Pull Request Automation")
 
 	// Step 1: Simulate new PR detection (in real scenario, this would be a webhook)
 	prData := map[string]interface{}{
-		"title":  "Add user authentication feature",
-		"author": "john.doe",
-		"branch": "feature/user-auth",
+		"title":         "Add user authentication feature",
+		"author":        "john.doe",
+		"branch":        "feature/user-auth",
 		"files_changed": 15,
 		"additions":     450,
 		"deletions":     120,
@@ -99,13 +104,12 @@ func runPullRequestWorkflow(ctx context.Context, framework core.Framework) {
 	// Step 2: Create Jira ticket for code review
 	log.Println("\n📋 Creating Jira ticket for code review...")
 
-	jiraOutput, err := framework.ExecuteTool(ctx, "jira_manage_issue", &models.ToolInput{
-		Params: map[string]interface{}{
-			"action":      "create",
-			"project_key": "ENG",
-			"issue_type":  "Code Review",
-			"summary":     fmt.Sprintf("Code Review: %s", prData["title"]),
-			"description": fmt.Sprintf(`
+	jiraOutput, err := framework.ExecuteTool(ctx, "jira_manage_issue", map[string]interface{}{
+		"action":      "create",
+		"project_key": "ENG",
+		"issue_type":  "Code Review",
+		"summary":     fmt.Sprintf("Code Review: %s", prData["title"]),
+		"description": fmt.Sprintf(`
 Code Review Request
 
 PR Details:
@@ -116,10 +120,9 @@ PR Details:
 - Deletions: %d
 
 Please review and approve before merging.
-			`, prData["author"], prData["branch"], prData["files_changed"],
-				prData["additions"], prData["deletions"]),
-			"priority": "High",
-		},
+		`, prData["author"], prData["branch"], prData["files_changed"],
+			prData["additions"], prData["deletions"]),
+		"priority": "High",
 	})
 
 	if err != nil || !jiraOutput.Success {
@@ -134,69 +137,65 @@ Please review and approve before merging.
 	// Step 3: Add PR to current sprint
 	log.Println("\n🏃 Adding to current sprint...")
 
-	sprintOutput, _ := framework.ExecuteTool(ctx, "jira_manage_sprint", &models.ToolInput{
-		Params: map[string]interface{}{
-			"action":    "add_issues",
-			"sprint_id": "123",
-			"issues":    []string{issueKey},
-		},
+	sprintOutput, _ := framework.ExecuteTool(ctx, "jira_manage_sprint", map[string]interface{}{
+		"action":    "add_issues",
+		"sprint_id": "123",
+		"issues":    []string{issueKey},
 	})
 
-	if sprintOutput.Success {
+	if sprintOutput != nil && sprintOutput.Success {
 		log.Println("✅ Added to current sprint")
 	}
 
 	// Step 4: Send Slack notification to team
 	log.Println("\n💬 Sending Slack notification...")
 
-	slackOutput, err := framework.ExecuteTool(ctx, "slack_send_message", &models.ToolInput{
-		Params: map[string]interface{}{
-			"channel": "#code-review",
-			"message": fmt.Sprintf("🔔 New code review required!"),
-			"attachments": []map[string]interface{}{
-				{
-					"color":  "#36a64f",
-					"title":  prData["title"].(string),
-					"fields": []map[string]interface{}{
-						{
-							"title": "Author",
-							"value": prData["author"],
-							"short": true,
-						},
-						{
-							"title": "Jira Ticket",
-							"value": issueKey,
-							"short": true,
-						},
-						{
-							"title": "Files Changed",
-							"value": fmt.Sprintf("%d", prData["files_changed"]),
-							"short": true,
-						},
-						{
-							"title": "Lines",
-							"value": fmt.Sprintf("+%d -%d", prData["additions"], prData["deletions"]),
-							"short": true,
-						},
+	slackOutput, err := framework.ExecuteTool(ctx, "slack_send_message", map[string]interface{}{
+		"channel": "#code-review",
+		"message": "🔔 New code review required!",
+		"attachments": []map[string]interface{}{
+			{
+				"color":  "#36a64f",
+				"title":  prData["title"].(string),
+				"fields": []map[string]interface{}{
+					{
+						"title": "Author",
+						"value": prData["author"],
+						"short": true,
 					},
-					"actions": []map[string]interface{}{
-						{
-							"type": "button",
-							"text": "Review PR",
-							"url":  "https://github.com/company/repo/pull/123",
-						},
-						{
-							"type": "button",
-							"text": "View Jira",
-							"url":  fmt.Sprintf("https://company.atlassian.net/browse/%s", issueKey),
-						},
+					{
+						"title": "Jira Ticket",
+						"value": issueKey,
+						"short": true,
+					},
+					{
+						"title": "Files Changed",
+						"value": fmt.Sprintf("%d", prData["files_changed"]),
+						"short": true,
+					},
+					{
+						"title": "Lines",
+						"value": fmt.Sprintf("+%d -%d", prData["additions"], prData["deletions"]),
+						"short": true,
+					},
+				},
+				"actions": []map[string]interface{}{
+					{
+						"type": "button",
+						"text": "Review PR",
+						"url":  "https://github.com/company/repo/pull/123",
+					},
+					{
+						"type": "button",
+						"text": "View Jira",
+						"url":  fmt.Sprintf("https://company.atlassian.net/browse/%s", issueKey),
 					},
 				},
 			},
 		},
 	})
 
-	if err != nil || !slackOutput.Success {
+	if err != nil || (slackOutput != nil && !slackOutput.Success) {
 		log.Printf("❌ Failed to send Slack notification: %v\n", err)
 		return
 	}
@@ -210,39 +209,33 @@ Please review and approve before merging.
 	// Step 6: Update Jira when PR is approved
 	log.Println("\n✅ Code review approved! Updating Jira...")
 
-	_, _ = framework.ExecuteTool(ctx, "jira_manage_issue", &models.ToolInput{
-		Params: map[string]interface{}{
-			"action":    "update",
-			"issue_key": issueKey,
-			"fields": map[string]interface{}{
-				"status": "Approved",
-			},
+	_, _ = framework.ExecuteTool(ctx, "jira_manage_issue", map[string]interface{}{
+		"action":    "update",
+		"issue_key": issueKey,
+		"fields": map[string]interface{}{
+			"status": "Approved",
 		},
 	})
 
 	// Step 7: Notify on Slack about approval
-	framework.ExecuteTool(ctx, "slack_send_message", &models.ToolInput{
-		Params: map[string]interface{}{
-			"channel": "#code-review",
-			"message": fmt.Sprintf("✅ Code review %s has been approved and ready to merge!", issueKey),
-		},
+	_, _ = framework.ExecuteTool(ctx, "slack_send_message", map[string]interface{}{
+		"channel": "#code-review",
+		"message": fmt.Sprintf("✅ Code review %s has been approved and ready to merge!", issueKey),
 	})
 
 	log.Println("\n✅ Pull request workflow completed!")
 }
 
 // runIncidentResponseWorkflow demonstrates incident management automation
-func runIncidentResponseWorkflow(ctx context.Context, framework core.Framework) {
-	log.Println("\n" + "="*60)
-	log.Println("🚨 WORKFLOW 2: Incident Response Automation")
-	log.Println("="*60 + "\n")
+func runIncidentResponseWorkflow(ctx context.Context, framework *core.FrameworkImpl) {
+	printSeparator("🚨 WORKFLOW 2: Incident Response Automation")
 
 	// Simulate incident detection
 	incident := map[string]interface{}{
-		"title":    "Production API Error Rate Spike",
-		"severity": "Critical",
-		"service":  "payment-api",
-		"error_rate": 15.5,
+		"title":          "Production API Error Rate Spike",
+		"severity":       "Critical",
+		"service":        "payment-api",
+		"error_rate":     15.5,
 		"affected_users": 1250,
 	}
 
@@ -251,13 +244,12 @@ func runIncidentResponseWorkflow(ctx context.Context, framework core.Framework) 
 	// Create high-priority Jira incident
 	log.Println("\n📋 Creating Jira incident ticket...")
 
-	jiraOutput, _ := framework.ExecuteTool(ctx, "jira_manage_issue", &models.ToolInput{
-		Params: map[string]interface{}{
-			"action":      "create",
-			"project_key": "OPS",
-			"issue_type":  "Incident",
-			"summary":     incident["title"],
-			"description": fmt.Sprintf(`
+	jiraOutput, _ := framework.ExecuteTool(ctx, "jira_manage_issue", map[string]interface{}{
+		"action":      "create",
+		"project_key": "OPS",
+		"issue_type":  "Incident",
+		"summary":     incident["title"],
+		"description": fmt.Sprintf(`
 **INCIDENT ALERT**
 
 Service: %s
@@ -266,12 +258,16 @@ Error Rate: %.1f%%
 Affected Users: %d
 
 Immediate action required!
-			`, incident["service"], incident["severity"],
-				incident["error_rate"], incident["affected_users"]),
-			"priority": "Critical",
-			"labels":   []string{"incident", "production", "api"},
-		},
+		`, incident["service"], incident["severity"],
+			incident["error_rate"], incident["affected_users"]),
+		"priority": "Critical",
+		"labels":   []string{"incident", "production", "api"},
 	})
+
+	if jiraOutput == nil || jiraOutput.Result == nil {
+		log.Println("❌ Failed to create incident ticket")
+		return
+	}
 
 	incidentKey := jiraOutput.Result.(map[string]interface{})["key"].(string)
 	log.Printf("✅ Created incident ticket: %s\n", incidentKey)
@@ -279,31 +275,29 @@ Immediate action required!
 	// Send urgent Slack alert
 	log.Println("\n🚨 Sending urgent Slack alert to on-call team...")
 
-	framework.ExecuteTool(ctx, "slack_send_message", &models.ToolInput{
-		Params: map[string]interface{}{
-			"channel": "#incidents",
-			"message": "@channel 🚨 CRITICAL INCIDENT",
-			"attachments": []map[string]interface{}{
-				{
-					"color": "#ff0000",
-					"title": incident["title"].(string),
-					"text":  fmt.Sprintf("Service: %s | Error Rate: %.1f%% | Affected Users: %d",
-						incident["service"], incident["error_rate"], incident["affected_users"]),
-					"fields": []map[string]interface{}{
-						{
-							"title": "Severity",
-							"value": incident["severity"],
-							"short": true,
-						},
-						{
-							"title": "Jira Ticket",
-							"value": incidentKey,
-							"short": true,
-						},
+	_, _ = framework.ExecuteTool(ctx, "slack_send_message", map[string]interface{}{
+		"channel": "#incidents",
+		"message": "@channel 🚨 CRITICAL INCIDENT",
+		"attachments": []map[string]interface{}{
+			{
+				"color": "#ff0000",
+				"title": incident["title"].(string),
+				"text": fmt.Sprintf("Service: %s | Error Rate: %.1f%% | Affected Users: %d",
+					incident["service"], incident["error_rate"], incident["affected_users"]),
+				"fields": []map[string]interface{}{
+					{
+						"title": "Severity",
+						"value": incident["severity"],
+						"short": true,
 					},
-					"footer": "Incident Response System",
-					"ts":     time.Now().Unix(),
+					{
+						"title": "Jira Ticket",
+						"value": incidentKey,
+						"short": true,
+					},
 				},
+				"footer": "Incident Response System",
+				"ts":     time.Now().Unix(),
 			},
 		},
 	})
@@ -313,22 +307,18 @@ Immediate action required!
 	// Send SMS to on-call engineer via Twilio
 	log.Println("\n📱 Sending SMS to on-call engineer...")
 
-	framework.ExecuteTool(ctx, "twilio_send_sms", &models.ToolInput{
-		Params: map[string]interface{}{
-			"to":   "+1234567890",
-			"message": fmt.Sprintf("🚨 CRITICAL: %s - Check Slack #incidents and Jira %s immediately!",
-				incident["title"], incidentKey),
-		},
+	_, _ = framework.ExecuteTool(ctx, "twilio_send_sms", map[string]interface{}{
+		"to": "+1234567890",
+		"message": fmt.Sprintf("🚨 CRITICAL: %s - Check Slack #incidents and Jira %s immediately!",
+			incident["title"], incidentKey),
 	})
 
 	log.Println("✅ SMS sent to on-call engineer")
 }
 
 // runDeploymentWorkflow demonstrates deployment automation
-func runDeploymentWorkflow(ctx context.Context, framework core.Framework) {
-	log.Println("\n" + "="*60)
-	log.Println("🚀 WORKFLOW 3: Deployment Automation")
-	log.Println("="*60 + "\n")
+func runDeploymentWorkflow(ctx context.Context, framework *core.FrameworkImpl) {
+	printSeparator("🚀 WORKFLOW 3: Deployment Automation")
 
 	deployment := map[string]interface{}{
 		"version":     "v2.5.0",
@@ -342,14 +332,13 @@ func runDeploymentWorkflow(ctx context.Context, framework core.Framework) {
 	// Create deployment Jira task
 	log.Println("\n📋 Creating deployment task in Jira...")
 
-	jiraOutput, _ := framework.ExecuteTool(ctx, "jira_manage_issue", &models.ToolInput{
-		Params: map[string]interface{}{
-			"action":      "create",
-			"project_key": "OPS",
-			"issue_type":  "Deployment",
-			"summary":     fmt.Sprintf("Deploy %s %s to %s",
-				deployment["service"], deployment["version"], deployment["environment"]),
-			"description": fmt.Sprintf(`
+	jiraOutput, _ := framework.ExecuteTool(ctx, "jira_manage_issue", map[string]interface{}{
+		"action":      "create",
+		"project_key": "OPS",
+		"issue_type":  "Deployment",
+		"summary": fmt.Sprintf("Deploy %s %s to %s",
+			deployment["service"], deployment["version"], deployment["environment"]),
+		"description": fmt.Sprintf(`
 Deployment Details:
 - Version: %s
 - Environment: %s
@@ -362,10 +351,14 @@ Deployment checklist:
 - [ ] Deploy new version
 - [ ] Health check verification
 - [ ] Monitoring verification
-			`, deployment["version"], deployment["environment"],
-				deployment["service"], deployment["commit"]),
-		},
+		`, deployment["version"], deployment["environment"],
+			deployment["service"], deployment["commit"]),
 	})
+
+	if jiraOutput == nil || jiraOutput.Result == nil {
+		log.Println("❌ Failed to create deployment task")
+		return
+	}
 
 	deploymentKey := jiraOutput.Result.(map[string]interface{})["key"].(string)
 	log.Printf("✅ Created deployment task: %s\n", deploymentKey)
@@ -373,39 +366,37 @@ Deployment checklist:
 	// Announce deployment start
 	log.Println("\n💬 Announcing deployment start on Slack...")
 
-	framework.ExecuteTool(ctx, "slack_send_message", &models.ToolInput{
-		Params: map[string]interface{}{
-			"channel": "#deployments",
-			"message": "🚀 Deployment Started",
-			"attachments": []map[string]interface{}{
-				{
-					"color": "#ffa500",
-					"title": fmt.Sprintf("Deploying %s %s", deployment["service"], deployment["version"]),
-					"fields": []map[string]interface{}{
-						{
-							"title": "Environment",
-							"value": deployment["environment"],
-							"short": true,
-						},
-						{
-							"title": "Version",
-							"value": deployment["version"],
-							"short": true,
-						},
-						{
-							"title": "Commit",
-							"value": deployment["commit"],
-							"short": true,
-						},
-						{
-							"title": "Jira",
-							"value": deploymentKey,
-							"short": true,
-						},
+	_, _ = framework.ExecuteTool(ctx, "slack_send_message", map[string]interface{}{
+		"channel": "#deployments",
+		"message": "🚀 Deployment Started",
+		"attachments": []map[string]interface{}{
+			{
+				"color": "#ffa500",
+				"title": fmt.Sprintf("Deploying %s %s", deployment["service"], deployment["version"]),
+				"fields": []map[string]interface{}{
+					{
+						"title": "Environment",
+						"value": deployment["environment"],
+						"short": true,
 					},
-					"footer": "Deployment System",
-					"ts":     time.Now().Unix(),
+					{
+						"title": "Version",
+						"value": deployment["version"],
+						"short": true,
+					},
+					{
+						"title": "Commit",
+						"value": deployment["commit"],
+						"short": true,
+					},
+					{
+						"title": "Jira",
+						"value": deploymentKey,
+						"short": true,
+					},
 				},
+				"footer": "Deployment System",
+				"ts":     time.Now().Unix(),
 			},
 		},
 	})
@@ -428,23 +419,19 @@ Deployment checklist:
 	// Update Jira on successful deployment
 	log.Println("\n✅ Deployment successful! Updating Jira...")
 
-	framework.ExecuteTool(ctx, "jira_manage_issue", &models.ToolInput{
-		Params: map[string]interface{}{
-			"action":    "update",
-			"issue_key": deploymentKey,
-			"fields": map[string]interface{}{
-				"status": "Done",
-			},
+	_, _ = framework.ExecuteTool(ctx, "jira_manage_issue", map[string]interface{}{
+		"action":    "update",
+		"issue_key": deploymentKey,
+		"fields": map[string]interface{}{
+			"status": "Done",
 		},
 	})
 
 	// Announce successful deployment
-	framework.ExecuteTool(ctx, "slack_send_message", &models.ToolInput{
-		Params: map[string]interface{}{
-			"channel": "#deployments",
-			"message": fmt.Sprintf("✅ Deployment %s completed successfully! Service %s is now running version %s in %s",
-				deploymentKey, deployment["service"], deployment["version"], deployment["environment"]),
-		},
+	_, _ = framework.ExecuteTool(ctx, "slack_send_message", map[string]interface{}{
+		"channel": "#deployments",
+		"message": fmt.Sprintf("✅ Deployment %s completed successfully! Service %s is now running version %s in %s",
+			deploymentKey, deployment["service"], deployment["version"], deployment["environment"]),
 	})
 
 	log.Println("✅ Deployment workflow completed!")

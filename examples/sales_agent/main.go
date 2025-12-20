@@ -16,7 +16,8 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Sales Analyst Agent Demo ===\n")
+	fmt.Println("=== Sales Analyst Agent Demo ===")
+	fmt.Println()
 
 	// Get OpenAI API key
 	apiKey := os.Getenv("OPENAI_API_KEY")
@@ -53,7 +54,8 @@ func main() {
 	fmt.Printf("✅ Created Sales Analyst Agent: %s (ID: %s)\n\n", agent.Name, agent.ID)
 
 	// Demo scenarios
-	fmt.Println("=== Demo Scenarios ===\n")
+	fmt.Println("=== Demo Scenarios ===")
+	fmt.Println()
 
 	// Scenario 1: Revenue Trend Analysis
 	fmt.Println("📈 Scenario 1: Analyze Revenue Trends")

@@ -113,11 +113,54 @@ func (e *Env) GetStringSlice(name string, defaultValue []string) []string {
 }
 
 // MustGetString returns the value of the environment variable or panics if not set.
+// DEPRECATED: Use RequireString for production code to avoid panics.
 func (e *Env) MustGetString(name string) string {
 	if value := os.Getenv(e.key(name)); value != "" {
 		return value
 	}
 	panic("required environment variable " + e.key(name) + " is not set")
+}
+
+// RequireString returns the value of the environment variable or an error if not set.
+// This is the safer alternative to MustGetString for production use.
+func (e *Env) RequireString(name string) (string, error) {
+	if value := os.Getenv(e.key(name)); value != "" {
+		return value, nil
+	}
+	return "", &EnvError{
+		Name:    e.key(name),
+		Message: "required environment variable is not set",
+	}
+}
+
+// RequireInt returns the integer value of the environment variable or an error.
+func (e *Env) RequireInt(name string) (int, error) {
+	value := os.Getenv(e.key(name))
+	if value == "" {
+		return 0, &EnvError{
+			Name:    e.key(name),
+			Message: "required environment variable is not set",
+		}
+	}
+	intValue, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, &EnvError{
+			Name:    e.key(name),
+			Message: "invalid integer value: " + value,
+		}
+	}
+	return intValue, nil
+}
+
+// EnvError represents an environment variable error
+type EnvError struct {
+	Name    string
+	Message string
+}
+
+// Error implements the error interface
+func (e *EnvError) Error() string {
+	return e.Name + ": " + e.Message
 }
 
 // IsSet returns true if the environment variable is set (even if empty).
@@ -164,8 +207,19 @@ func GetStringSlice(name string, defaultValue []string) []string {
 }
 
 // MustGetString returns the value of the environment variable with MINION prefix or panics.
+// DEPRECATED: Use RequireString for production code to avoid panics.
 func MustGetString(name string) string {
 	return DefaultEnv.MustGetString(name)
+}
+
+// RequireString returns the value of the environment variable with MINION prefix or an error.
+func RequireString(name string) (string, error) {
+	return DefaultEnv.RequireString(name)
+}
+
+// RequireInt returns the integer value of the environment variable with MINION prefix or an error.
+func RequireInt(name string) (int, error) {
+	return DefaultEnv.RequireInt(name)
 }
 
 // IsSet returns true if the environment variable with MINION prefix is set.

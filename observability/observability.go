@@ -10,7 +10,7 @@ import (
 
 // Observability is the main interface for the observability stack
 type Observability struct {
-	Logger      *Logger
+	Logger      Logger
 	Tracer      *Tracer
 	Metrics     *MetricsCollector
 	CostTracker *CostTracker
@@ -20,27 +20,13 @@ type Observability struct {
 // New creates a new observability stack
 func New(cfg *config.Config) (*Observability, error) {
 	// Initialize Logger
-	loggerConfig := LoggerConfig{
-		Level:       cfg.App.LogLevel,
-		Format:      cfg.Observability.Logging.Format,
-		Output:      cfg.Observability.Logging.Output,
-		FilePath:    cfg.Observability.Logging.FilePath,
-		EnablePII:   false, // Always disable PII in logs
-		ServiceName: cfg.App.Name,
-		Environment: cfg.App.Env,
+	loggerConfig := &LoggerConfig{
+		Level:      LogLevel(cfg.App.LogLevel),
+		JSONOutput: cfg.Observability.Logging.Format == "json",
+		WithCaller: true,
 	}
 
-	logger, err := NewLogger(loggerConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize logger: %w", err)
-	}
-
-	// Set as global logger
-	if err := InitGlobalLogger(loggerConfig); err != nil {
-		return nil, fmt.Errorf("failed to initialize global logger: %w", err)
-	}
-
-	logger.Info("Logger initialized successfully")
+	logger := NewLogger(loggerConfig)
 
 	// Initialize Tracer
 	tracingConfig := TracingConfig{
@@ -64,7 +50,7 @@ func New(cfg *config.Config) (*Observability, error) {
 	}
 
 	if tracingConfig.Enabled {
-		logger.Infof("Tracer initialized successfully (exporter: %s)", tracingConfig.Exporter)
+		logger.Info(fmt.Sprintf("Tracer initialized successfully (exporter: %s)", tracingConfig.Exporter))
 	}
 
 	// Initialize Metrics
@@ -83,7 +69,7 @@ func New(cfg *config.Config) (*Observability, error) {
 	}
 
 	if metricsConfig.Enabled {
-		logger.Infof("Metrics collector initialized successfully (port: %d)", metricsConfig.Port)
+		logger.Info(fmt.Sprintf("Metrics collector initialized successfully (port: %d)", metricsConfig.Port))
 	}
 
 	// Initialize Cost Tracker
@@ -105,7 +91,7 @@ func New(cfg *config.Config) (*Observability, error) {
 	}
 
 	if costConfig.Enabled {
-		logger.Infof("Cost tracker initialized successfully (budget: $%.2f/day)", costConfig.BudgetAlertThreshold)
+		logger.Info(fmt.Sprintf("Cost tracker initialized successfully (budget: $%.2f/day)", costConfig.BudgetAlertThreshold))
 	}
 
 	return &Observability{
@@ -123,7 +109,7 @@ func (o *Observability) Close(ctx context.Context) error {
 
 	// Shutdown tracer
 	if err := o.Tracer.Close(ctx); err != nil {
-		o.Logger.Error("Failed to shutdown tracer", err)
+		o.Logger.Error("Failed to shutdown tracer", Err(err))
 		return err
 	}
 
@@ -131,9 +117,9 @@ func (o *Observability) Close(ctx context.Context) error {
 	if o.config.Observability.Cost.Enabled {
 		filename := fmt.Sprintf("cost_export_%s.json", o.config.App.Env)
 		if err := o.CostTracker.ExportRecords(filename); err != nil {
-			o.Logger.Warnf("Failed to export cost records: %v", err)
+			o.Logger.Warn(fmt.Sprintf("Failed to export cost records: %v", err))
 		} else {
-			o.Logger.Infof("Cost records exported to %s", filename)
+			o.Logger.Info(fmt.Sprintf("Cost records exported to %s", filename))
 		}
 	}
 
@@ -148,7 +134,7 @@ func (o *Observability) StartMetricsServer() error {
 		return nil
 	}
 
-	o.Logger.Infof("Starting metrics server on port %d", o.config.Observability.Metrics.Port)
+	o.Logger.Info(fmt.Sprintf("Starting metrics server on port %d", o.config.Observability.Metrics.Port))
 	return o.Metrics.StartMetricsServer()
 }
 
@@ -169,7 +155,7 @@ func (o *Observability) ObserveAgentExecution(
 
 	// Log start
 	logger := o.Logger.WithContext(ctx)
-	logger.LogAgentExecution(ctx, agentID, action, 0, nil)
+	logger.Info("Starting agent execution", String("agent_id", agentID), String("action", action))
 
 	// Execute function with timing
 	start := time.Now()
@@ -180,7 +166,11 @@ func (o *Observability) ObserveAgentExecution(
 	o.Metrics.RecordAgentExecution(agentID, agentName, duration, err)
 
 	// Log completion
-	logger.LogAgentExecution(ctx, agentID, action, duration, err)
+	if err != nil {
+		logger.Error("Agent execution failed", String("agent_id", agentID), String("action", action), Duration("duration", duration), Err(err))
+	} else {
+		logger.Info("Agent execution completed", String("agent_id", agentID), String("action", action), Duration("duration", duration))
+	}
 
 	// Record error in span if present
 	if err != nil {
@@ -203,7 +193,7 @@ func (o *Observability) ObserveToolCall(
 
 	// Log start
 	logger := o.Logger.WithContext(ctx)
-	logger.LogToolCall(ctx, toolName, input, 0, nil)
+	logger.Info("Starting tool call", String("tool_name", toolName))
 
 	// Execute function with timing
 	start := time.Now()
@@ -214,7 +204,11 @@ func (o *Observability) ObserveToolCall(
 	o.Metrics.RecordToolCall(toolName, duration, err)
 
 	// Log completion
-	logger.LogToolCall(ctx, toolName, input, duration, err)
+	if err != nil {
+		logger.Error("Tool call failed", String("tool_name", toolName), Duration("duration", duration), Err(err))
+	} else {
+		logger.Info("Tool call completed", String("tool_name", toolName), Duration("duration", duration))
+	}
 
 	// Record error in span if present
 	if err != nil {
@@ -236,7 +230,7 @@ func (o *Observability) ObserveLLMCall(
 
 	// Log start
 	logger := o.Logger.WithContext(ctx)
-	logger.LogLLMCall(ctx, provider, model, 0, 0, 0, 0, nil)
+	logger.Info("Starting LLM call", String("provider", provider), String("model", model))
 
 	// Execute function with timing
 	start := time.Now()
@@ -253,7 +247,17 @@ func (o *Observability) ObserveLLMCall(
 	o.Metrics.RecordLLMRequest(provider, model, duration, promptTokens, completionTokens, cost, err)
 
 	// Log completion
-	logger.LogLLMCall(ctx, provider, model, promptTokens, completionTokens, duration, cost, err)
+	if err != nil {
+		logger.Error("LLM call failed", String("provider", provider), String("model", model), Duration("duration", duration), Err(err))
+	} else {
+		logger.Info("LLM call completed",
+			String("provider", provider),
+			String("model", model),
+			Int("prompt_tokens", promptTokens),
+			Int("completion_tokens", completionTokens),
+			Float64("cost", cost),
+			Duration("duration", duration))
+	}
 
 	// Record error in span if present
 	if err != nil {
@@ -281,10 +285,10 @@ func (o *Observability) ObserveStorageOperation(
 	// Record metrics
 	o.Metrics.RecordStorageOperation(operation, table, duration, err)
 
-	// Log operation (only if debug level or on error)
+	// Log operation (only on error)
 	if err != nil {
 		logger := o.Logger.WithContext(ctx)
-		logger.LogStorageOperation(ctx, operation, table, duration, err)
+		logger.Error("Storage operation failed", String("operation", operation), String("table", table), Duration("duration", duration), Err(err))
 	}
 
 	// Record error in span if present
@@ -296,7 +300,7 @@ func (o *Observability) ObserveStorageOperation(
 }
 
 // GetLogger returns the logger with context
-func (o *Observability) GetLogger(ctx context.Context) *Logger {
+func (o *Observability) GetLogger(ctx context.Context) Logger {
 	return o.Logger.WithContext(ctx)
 }
 
@@ -307,7 +311,10 @@ func (o *Observability) GetTraceID(ctx context.Context) string {
 
 // LogSecurityEvent logs a security-related event
 func (o *Observability) LogSecurityEvent(ctx context.Context, eventType, description, severity string) {
-	o.Logger.LogSecurityEvent(ctx, eventType, description, severity)
+	o.Logger.WithContext(ctx).Warn("Security event",
+		String("event_type", eventType),
+		String("description", description),
+		String("severity", severity))
 }
 
 // GetCostSummary returns the daily cost summary

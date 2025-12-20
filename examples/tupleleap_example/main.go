@@ -14,11 +14,14 @@ func main() {
 	ctx := context.Background()
 
 	// Example 1: Direct TupleLeap usage
-	fmt.Println("=== Example 1: Direct TupleLeap Usage ===\n")
+	fmt.Println("=== Example 1: Direct TupleLeap Usage ===")
+	fmt.Println()
 	directUsage(ctx)
 
-	fmt.Println("\n=== Example 2: TupleLeap with Minion Workers ===\n")
-	withMinionWorkers(ctx)
+	fmt.Println()
+	fmt.Println("=== Example 2: TupleLeap with Minion Multi-Agent System ===")
+	fmt.Println()
+	withMinionCoordinator(ctx)
 }
 
 func directUsage(ctx context.Context) {
@@ -72,7 +75,32 @@ func directUsage(ctx context.Context) {
 	}
 }
 
-func withMinionWorkers(ctx context.Context) {
+// TupleLeapAdapter adapts the TupleLeap provider to the multiagent interface
+type TupleLeapAdapter struct {
+	provider *llm.TupleLeapProvider
+}
+
+func (l *TupleLeapAdapter) GenerateCompletion(ctx context.Context, req *multiagent.CompletionRequest) (*multiagent.CompletionResponse, error) {
+	resp, err := l.provider.GenerateCompletion(ctx, &llm.CompletionRequest{
+		SystemPrompt: req.SystemPrompt,
+		UserPrompt:   req.UserPrompt,
+		Temperature:  req.Temperature,
+		MaxTokens:    req.MaxTokens,
+		Model:        req.Model,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &multiagent.CompletionResponse{
+		Text:         resp.Text,
+		TokensUsed:   resp.TokensUsed,
+		Model:        resp.Model,
+		FinishReason: resp.FinishReason,
+	}, nil
+}
+
+func withMinionCoordinator(ctx context.Context) {
 	// Check if API key is set
 	apiKey := os.Getenv("TUPLELEAP_API_KEY")
 	if apiKey == "" {
@@ -80,140 +108,155 @@ func withMinionWorkers(ctx context.Context) {
 		return
 	}
 
-	// Create protocol and ledger
-	protocol := multiagent.NewInMemoryProtocol(nil)
-	ledger := multiagent.NewInMemoryLedger()
-
-	// Create orchestrator
-	orchestrator := multiagent.NewOrchestratorAgent(
-		"orchestrator-1",
-		protocol,
-		ledger,
-	)
-
-	// Create TupleLeap-powered worker
-	worker := createTupleLeapWorker("tupleleap-worker-1", apiKey, protocol, ledger)
-
-	// Start agents
-	if err := orchestrator.Start(ctx); err != nil {
-		log.Fatal(err)
+	// Create TupleLeap adapter for multiagent
+	llmProvider := &TupleLeapAdapter{
+		provider: llm.NewTupleLeap(apiKey),
 	}
 
-	if err := worker.Start(ctx); err != nil {
-		log.Fatal(err)
+	// Create coordinator with default configuration
+	coordinator := multiagent.NewCoordinator(llmProvider, nil)
+
+	// Initialize with default workers
+	if err := coordinator.Initialize(ctx); err != nil {
+		log.Fatalf("Failed to initialize coordinator: %v", err)
 	}
 
-	orchestrator.RegisterWorker(worker)
-	fmt.Println("Started TupleLeap worker")
+	fmt.Println("✅ Multi-agent system initialized with TupleLeap")
+	fmt.Printf("   Workers registered: %d\n\n", len(coordinator.GetWorkers()))
 
-	// Create tasks
-	tasks := []*multiagent.Task{
-		{
-			ID:          "task-1",
-			Name:        "Code Review",
-			Description: "Review code snippet",
-			Type:        "tupleleap",
-			Priority:    multiagent.PriorityHigh,
-			Input: map[string]interface{}{
-				"system_prompt": "You are an expert code reviewer.",
-				"user_prompt": `Review this Go code:
-func Add(a, b int) int {
+	// List registered workers
+	fmt.Println("📋 Registered Workers:")
+	for _, worker := range coordinator.GetWorkers() {
+		fmt.Printf("   - Agent %s (Role: %s)\n", worker.AgentID[:8], worker.Role)
+		fmt.Printf("     Capabilities: %v\n", worker.Capabilities)
+	}
+	fmt.Println()
+
+	// Task 1: Code Review using TupleLeap
+	fmt.Println("🚀 Task 1: Code Review")
+	codeReviewTask := &multiagent.TaskRequest{
+		Name:        "Review Go Code",
+		Description: "Review the provided Go code snippet for best practices",
+		Type:        "code_review",
+		Priority:    multiagent.PriorityHigh,
+		Input: map[string]interface{}{
+			"code": `func Add(a, b int) int {
     return a + b
 }`,
-				"model":       "tupleleap-default",
-				"temperature": 0.7,
-				"max_tokens":  300,
-			},
-		},
-		{
-			ID:          "task-2",
-			Name:        "Documentation",
-			Description: "Generate documentation",
-			Type:        "tupleleap",
-			Priority:    multiagent.PriorityMedium,
-			Input: map[string]interface{}{
-				"system_prompt": "You are a technical writer.",
-				"user_prompt":   "Write a brief README for a REST API project in Go.",
-				"model":         "tupleleap-default",
-				"temperature":   0.7,
-				"max_tokens":    400,
-			},
+			"language": "go",
+			"focus":    []string{"best practices", "error handling", "documentation"},
 		},
 	}
 
-	// Execute tasks
-	for _, task := range tasks {
-		fmt.Printf("\nExecuting task: %s\n", task.Name)
-
-		result, err := orchestrator.ExecuteTask(ctx, task)
-		if err != nil {
-			log.Printf("Task failed: %v\n", err)
-			continue
-		}
-
-		if resultMap, ok := result.(map[string]interface{}); ok {
-			fmt.Printf("Status: %s\n", resultMap["status"])
-			if data, ok := resultMap["data"].(map[string]interface{}); ok {
-				fmt.Printf("Response: %s\n", data["text"])
-				fmt.Printf("Tokens: %v\n", data["tokens_used"])
+	fmt.Println("   Executing code review task...")
+	result, err := coordinator.ExecuteTask(ctx, codeReviewTask)
+	if err != nil {
+		log.Printf("   ❌ Task failed: %v\n", err)
+	} else {
+		fmt.Printf("   ✅ Task completed: %s\n", result.Status)
+		if output, ok := result.Output.(map[string]interface{}); ok {
+			if text, exists := output["text"]; exists {
+				textStr := fmt.Sprintf("%v", text)
+				if len(textStr) > 300 {
+					textStr = textStr[:300] + "..."
+				}
+				fmt.Printf("   Response: %s\n", textStr)
 			}
 		}
 	}
+	fmt.Println()
 
-	// Cleanup
-	worker.Stop(ctx)
-	orchestrator.Stop(ctx)
-}
+	// Task 2: Documentation Generation
+	fmt.Println("🚀 Task 2: Documentation Generation")
+	docTask := &multiagent.TaskRequest{
+		Name:        "Generate README",
+		Description: "Write a brief README for a REST API project in Go",
+		Type:        "content_generation",
+		Priority:    multiagent.PriorityNormal,
+		Input: map[string]interface{}{
+			"type":     "readme",
+			"language": "go",
+			"project":  "REST API",
+			"sections": []string{"overview", "installation", "usage", "api endpoints"},
+		},
+	}
 
-func createTupleLeapWorker(
-	workerID string,
-	apiKey string,
-	protocol multiagent.Protocol,
-	ledger multiagent.LedgerBackend,
-) *multiagent.WorkerAgent {
-	// Create worker
-	worker := multiagent.NewWorkerAgent(
-		workerID,
-		[]string{"tupleleap"},
-		protocol,
-		ledger,
-	)
-
-	// Create TupleLeap provider
-	provider := llm.NewTupleLeap(apiKey)
-
-	// Register handler
-	worker.RegisterHandler("tupleleap", func(task *multiagent.Task) (*multiagent.Result, error) {
-		// Extract input
-		systemPrompt := task.Input["system_prompt"].(string)
-		userPrompt := task.Input["user_prompt"].(string)
-		model := task.Input["model"].(string)
-		temperature := task.Input["temperature"].(float64)
-		maxTokens := task.Input["max_tokens"].(int)
-
-		// Call TupleLeap
-		resp, err := provider.GenerateCompletion(ctx, &llm.CompletionRequest{
-			SystemPrompt: systemPrompt,
-			UserPrompt:   userPrompt,
-			Temperature:  temperature,
-			MaxTokens:    maxTokens,
-			Model:        model,
-		})
-
-		if err != nil {
-			return nil, fmt.Errorf("TupleLeap error: %w", err)
+	fmt.Println("   Executing documentation task...")
+	result, err = coordinator.ExecuteTask(ctx, docTask)
+	if err != nil {
+		log.Printf("   ❌ Task failed: %v\n", err)
+	} else {
+		fmt.Printf("   ✅ Task completed: %s\n", result.Status)
+		if output, ok := result.Output.(map[string]interface{}); ok {
+			if text, exists := output["text"]; exists {
+				textStr := fmt.Sprintf("%v", text)
+				if len(textStr) > 300 {
+					textStr = textStr[:300] + "..."
+				}
+				fmt.Printf("   Response: %s\n", textStr)
+			}
 		}
+	}
+	fmt.Println()
 
-		return &multiagent.Result{
-			Status: "success",
-			Data: map[string]interface{}{
-				"text":        resp.Text,
-				"tokens_used": resp.TokensUsed,
-				"model":       resp.Model,
-				"provider":    "tupleleap",
-			},
-		}, nil
-	})
+	// Task 3: Research task
+	fmt.Println("🚀 Task 3: Research - API Design")
+	researchTask := &multiagent.TaskRequest{
+		Name:        "Research API Design",
+		Description: "Research best practices for RESTful API design",
+		Type:        "research",
+		Priority:    multiagent.PriorityNormal,
+		Input: map[string]interface{}{
+			"topic": "RESTful API design best practices",
+			"focus": []string{"endpoints", "versioning", "authentication", "error handling"},
+		},
+	}
 
-	return worker
+	fmt.Println("   Executing research task...")
+	result, err = coordinator.ExecuteTask(ctx, researchTask)
+	if err != nil {
+		log.Printf("   ❌ Task failed: %v\n", err)
+	} else {
+		fmt.Printf("   ✅ Task completed: %s\n", result.Status)
+		if output, ok := result.Output.(map[string]interface{}); ok {
+			if text, exists := output["text"]; exists {
+				textStr := fmt.Sprintf("%v", text)
+				if len(textStr) > 300 {
+					textStr = textStr[:300] + "..."
+				}
+				fmt.Printf("   Response: %s\n", textStr)
+			}
+		}
+	}
+	fmt.Println()
+
+	// Get monitoring stats
+	fmt.Println("📊 System Monitoring:")
+	stats, err := coordinator.GetMonitoringStats(ctx)
+	if err != nil {
+		log.Printf("   Failed to get stats: %v\n", err)
+	} else {
+		fmt.Printf("   Total Workers: %d (Idle: %d, Busy: %d)\n",
+			stats.TotalWorkers, stats.IdleWorkers, stats.BusyWorkers)
+		fmt.Printf("   Total Tasks: %d (Completed: %d, Failed: %d, Pending: %d)\n",
+			stats.TotalTasks, stats.CompletedTasks, stats.FailedTasks, stats.PendingTasks)
+	}
+	fmt.Println()
+
+	// Health check
+	fmt.Println("🏥 Health Check:")
+	health := coordinator.HealthCheck(ctx)
+	fmt.Printf("   Overall Status: %s\n", health.Status)
+	for component, status := range health.Components {
+		fmt.Printf("   - %s: %s\n", component, status)
+	}
+	fmt.Println()
+
+	// Graceful shutdown
+	fmt.Println("🛑 Shutting down...")
+	if err := coordinator.Shutdown(ctx); err != nil {
+		log.Printf("Error during shutdown: %v\n", err)
+	}
+
+	fmt.Println("✅ TupleLeap example completed successfully")
 }

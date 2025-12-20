@@ -71,7 +71,7 @@ func (s *PostgresStore) Create(ctx context.Context, agent *models.Agent) error {
 		INSERT INTO agents (
 			id, name, description, personality, language, status,
 			llm_provider, llm_model, temperature, max_tokens,
-			behavior_name, capabilities, metadata,
+			behavior_type, capabilities, metadata,
 			created_at, updated_at
 		) VALUES (
 			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
@@ -92,14 +92,14 @@ func (s *PostgresStore) Create(ctx context.Context, agent *models.Agent) error {
 		agent.ID,
 		agent.Name,
 		agent.Description,
-		agent.Personality,
-		agent.Language,
+		agent.Config.Personality,
+		agent.Config.Language,
 		agent.Status,
-		agent.LLMProvider,
-		agent.LLMModel,
-		agent.Temperature,
-		agent.MaxTokens,
-		agent.BehaviorName,
+		agent.Config.LLMProvider,
+		agent.Config.LLMModel,
+		agent.Config.Temperature,
+		agent.Config.MaxTokens,
+		agent.BehaviorType,
 		capabilitiesJSON,
 		metadataJSON,
 		agent.CreatedAt,
@@ -119,7 +119,7 @@ func (s *PostgresStore) Get(ctx context.Context, id string) (*models.Agent, erro
 		SELECT
 			id, name, description, personality, language, status,
 			llm_provider, llm_model, temperature, max_tokens,
-			behavior_name, capabilities, metadata,
+			behavior_type, capabilities, metadata,
 			created_at, updated_at
 		FROM agents
 		WHERE id = $1
@@ -132,14 +132,14 @@ func (s *PostgresStore) Get(ctx context.Context, id string) (*models.Agent, erro
 		&agent.ID,
 		&agent.Name,
 		&agent.Description,
-		&agent.Personality,
-		&agent.Language,
+		&agent.Config.Personality,
+		&agent.Config.Language,
 		&agent.Status,
-		&agent.LLMProvider,
-		&agent.LLMModel,
-		&agent.Temperature,
-		&agent.MaxTokens,
-		&agent.BehaviorName,
+		&agent.Config.LLMProvider,
+		&agent.Config.LLMModel,
+		&agent.Config.Temperature,
+		&agent.Config.MaxTokens,
+		&agent.BehaviorType,
 		&capabilitiesJSON,
 		&metadataJSON,
 		&agent.CreatedAt,
@@ -177,7 +177,7 @@ func (s *PostgresStore) Update(ctx context.Context, agent *models.Agent) error {
 			llm_model = $8,
 			temperature = $9,
 			max_tokens = $10,
-			behavior_name = $11,
+			behavior_type = $11,
 			capabilities = $12,
 			metadata = $13,
 			updated_at = $14
@@ -200,14 +200,14 @@ func (s *PostgresStore) Update(ctx context.Context, agent *models.Agent) error {
 		agent.ID,
 		agent.Name,
 		agent.Description,
-		agent.Personality,
-		agent.Language,
+		agent.Config.Personality,
+		agent.Config.Language,
 		agent.Status,
-		agent.LLMProvider,
-		agent.LLMModel,
-		agent.Temperature,
-		agent.MaxTokens,
-		agent.BehaviorName,
+		agent.Config.LLMProvider,
+		agent.Config.LLMModel,
+		agent.Config.Temperature,
+		agent.Config.MaxTokens,
+		agent.BehaviorType,
 		capabilitiesJSON,
 		metadataJSON,
 		agent.UpdatedAt,
@@ -257,7 +257,7 @@ func (s *PostgresStore) List(ctx context.Context, filter *models.ListAgentsReque
 		SELECT
 			id, name, description, personality, language, status,
 			llm_provider, llm_model, temperature, max_tokens,
-			behavior_name, capabilities, metadata,
+			behavior_type, capabilities, metadata,
 			created_at, updated_at
 		FROM agents
 		WHERE 1=1
@@ -275,8 +275,8 @@ func (s *PostgresStore) List(ctx context.Context, filter *models.ListAgentsReque
 	}
 
 	if filter.BehaviorType != nil {
-		query += fmt.Sprintf(" AND behavior_name = $%d", argPos)
-		countQuery += fmt.Sprintf(" AND behavior_name = $%d", argPos)
+		query += fmt.Sprintf(" AND behavior_type = $%d", argPos)
+		countQuery += fmt.Sprintf(" AND behavior_type = $%d", argPos)
 		args = append(args, *filter.BehaviorType)
 		argPos++
 	}
@@ -289,8 +289,12 @@ func (s *PostgresStore) List(ctx context.Context, filter *models.ListAgentsReque
 	}
 
 	// Apply pagination
+	offset := (filter.Page - 1) * filter.PageSize
+	if offset < 0 {
+		offset = 0
+	}
 	query += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d OFFSET $%d", argPos, argPos+1)
-	args = append(args, filter.PageSize, filter.Offset)
+	args = append(args, filter.PageSize, offset)
 
 	// Execute query
 	rows, err := s.db.QueryContext(ctx, query, args...)
@@ -308,14 +312,14 @@ func (s *PostgresStore) List(ctx context.Context, filter *models.ListAgentsReque
 			&agent.ID,
 			&agent.Name,
 			&agent.Description,
-			&agent.Personality,
-			&agent.Language,
+			&agent.Config.Personality,
+			&agent.Config.Language,
 			&agent.Status,
-			&agent.LLMProvider,
-			&agent.LLMModel,
-			&agent.Temperature,
-			&agent.MaxTokens,
-			&agent.BehaviorName,
+			&agent.Config.LLMProvider,
+			&agent.Config.LLMModel,
+			&agent.Config.Temperature,
+			&agent.Config.MaxTokens,
+			&agent.BehaviorType,
 			&capabilitiesJSON,
 			&metadataJSON,
 			&agent.CreatedAt,
@@ -348,7 +352,7 @@ func (s *PostgresStore) FindByBehaviorType(ctx context.Context, behaviorType str
 	filter := &models.ListAgentsRequest{
 		BehaviorType: &behaviorType,
 		PageSize:     100,
-		Offset:       0,
+		Page:         1,
 	}
 	agents, _, err := s.List(ctx, filter)
 	return agents, err
@@ -359,7 +363,7 @@ func (s *PostgresStore) FindByStatus(ctx context.Context, status models.AgentSta
 	filter := &models.ListAgentsRequest{
 		Status:   &status,
 		PageSize: 100,
-		Offset:   0,
+		Page:     1,
 	}
 	agents, _, err := s.List(ctx, filter)
 	return agents, err
@@ -388,7 +392,7 @@ func (s *PostgresStore) GetMetrics(ctx context.Context, agentID string) (*models
 	err := s.db.QueryRowContext(ctx, query, agentID).Scan(
 		&metrics.SuccessfulExecutions,
 		&metrics.FailedExecutions,
-		&metrics.AverageExecutionTime,
+		&metrics.AvgExecutionTime,
 		&lastExec,
 	)
 
@@ -397,7 +401,7 @@ func (s *PostgresStore) GetMetrics(ctx context.Context, agentID string) (*models
 	}
 
 	metrics.TotalExecutions = metrics.SuccessfulExecutions + metrics.FailedExecutions
-	metrics.LastExecution = lastExec
+	metrics.LastExecutionAt = &lastExec
 
 	return &metrics, nil
 }
@@ -422,11 +426,11 @@ func (s *PostgresStore) CreateMetrics(ctx context.Context, metrics *models.Metri
 func (s *PostgresStore) RecordActivity(ctx context.Context, activity *models.Activity) error {
 	query := `
 		INSERT INTO activities (
-			id, agent_id, session_id, action, status,
-			input, output, error, duration_ms, token_count, cost,
+			id, agent_id, action, status,
+			input, output, error, duration_ms,
 			tools_used, metadata, created_at
 		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 		)
 	`
 
@@ -434,11 +438,6 @@ func (s *PostgresStore) RecordActivity(ctx context.Context, activity *models.Act
 	outputJSON, _ := json.Marshal(activity.Output)
 	toolsJSON, _ := json.Marshal(activity.ToolsUsed)
 	metadataJSON, _ := json.Marshal(activity.Metadata)
-
-	var sessionID *string
-	if activity.SessionID != "" {
-		sessionID = &activity.SessionID
-	}
 
 	var errorStr *string
 	if activity.Error != "" {
@@ -448,15 +447,12 @@ func (s *PostgresStore) RecordActivity(ctx context.Context, activity *models.Act
 	_, err := s.db.ExecContext(ctx, query,
 		activity.ID,
 		activity.AgentID,
-		sessionID,
 		activity.Action,
 		activity.Status,
 		inputJSON,
 		outputJSON,
 		errorStr,
-		activity.DurationMS,
-		activity.TokenCount,
-		activity.Cost,
+		activity.Duration,
 		toolsJSON,
 		metadataJSON,
 		activity.CreatedAt,
@@ -473,9 +469,8 @@ func (s *PostgresStore) RecordActivity(ctx context.Context, activity *models.Act
 func (s *PostgresStore) GetActivities(ctx context.Context, agentID string, limit int) ([]*models.Activity, error) {
 	query := `
 		SELECT
-			id, agent_id, COALESCE(session_id, ''), action, status,
+			id, agent_id, action, status,
 			input, output, COALESCE(error, ''), duration_ms,
-			COALESCE(token_count, 0), COALESCE(cost, 0),
 			tools_used, metadata, created_at
 		FROM activities
 		WHERE agent_id = $1
@@ -497,15 +492,12 @@ func (s *PostgresStore) GetActivities(ctx context.Context, agentID string, limit
 		err := rows.Scan(
 			&activity.ID,
 			&activity.AgentID,
-			&activity.SessionID,
 			&activity.Action,
 			&activity.Status,
 			&inputJSON,
 			&outputJSON,
 			&activity.Error,
-			&activity.DurationMS,
-			&activity.TokenCount,
-			&activity.Cost,
+			&activity.Duration,
 			&toolsJSON,
 			&metadataJSON,
 			&activity.CreatedAt,
@@ -533,9 +525,8 @@ func (s *PostgresStore) GetActivities(ctx context.Context, agentID string, limit
 func (s *PostgresStore) GetActivityByID(ctx context.Context, id string) (*models.Activity, error) {
 	query := `
 		SELECT
-			id, agent_id, COALESCE(session_id, ''), action, status,
+			id, agent_id, action, status,
 			input, output, COALESCE(error, ''), duration_ms,
-			COALESCE(token_count, 0), COALESCE(cost, 0),
 			tools_used, metadata, created_at
 		FROM activities
 		WHERE id = $1
@@ -547,15 +538,12 @@ func (s *PostgresStore) GetActivityByID(ctx context.Context, id string) (*models
 	err := s.db.QueryRowContext(ctx, query, id).Scan(
 		&activity.ID,
 		&activity.AgentID,
-		&activity.SessionID,
 		&activity.Action,
 		&activity.Status,
 		&inputJSON,
 		&outputJSON,
 		&activity.Error,
-		&activity.DurationMS,
-		&activity.TokenCount,
-		&activity.Cost,
+		&activity.Duration,
 		&toolsJSON,
 		&metadataJSON,
 		&activity.CreatedAt,
@@ -594,57 +582,476 @@ func (t *PostgresTransaction) Rollback() error {
 }
 
 // Transaction methods mirror the store methods but use tx instead of db
-// For brevity, only showing the structure - full implementation would be similar
 
 func (t *PostgresTransaction) Create(ctx context.Context, agent *models.Agent) error {
-	// Similar to PostgresStore.Create but using t.tx
-	return fmt.Errorf("not implemented")
+	query := `
+		INSERT INTO agents (
+			id, name, description, personality, language, status,
+			llm_provider, llm_model, temperature, max_tokens,
+			behavior_type, capabilities, metadata,
+			created_at, updated_at
+		) VALUES (
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+		)
+	`
+
+	capabilitiesJSON, err := json.Marshal(agent.Capabilities)
+	if err != nil {
+		return fmt.Errorf("failed to marshal capabilities: %w", err)
+	}
+
+	metadataJSON, err := json.Marshal(agent.Metadata)
+	if err != nil {
+		return fmt.Errorf("failed to marshal metadata: %w", err)
+	}
+
+	_, err = t.tx.ExecContext(ctx, query,
+		agent.ID,
+		agent.Name,
+		agent.Description,
+		agent.Config.Personality,
+		agent.Config.Language,
+		agent.Status,
+		agent.Config.LLMProvider,
+		agent.Config.LLMModel,
+		agent.Config.Temperature,
+		agent.Config.MaxTokens,
+		agent.BehaviorType,
+		capabilitiesJSON,
+		metadataJSON,
+		agent.CreatedAt,
+		agent.UpdatedAt,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to create agent: %w", err)
+	}
+
+	return nil
 }
 
 func (t *PostgresTransaction) Get(ctx context.Context, id string) (*models.Agent, error) {
-	return nil, fmt.Errorf("not implemented")
+	query := `
+		SELECT
+			id, name, description, personality, language, status,
+			llm_provider, llm_model, temperature, max_tokens,
+			behavior_type, capabilities, metadata,
+			created_at, updated_at
+		FROM agents
+		WHERE id = $1
+	`
+
+	var agent models.Agent
+	var capabilitiesJSON, metadataJSON []byte
+
+	err := t.tx.QueryRowContext(ctx, query, id).Scan(
+		&agent.ID,
+		&agent.Name,
+		&agent.Description,
+		&agent.Config.Personality,
+		&agent.Config.Language,
+		&agent.Status,
+		&agent.Config.LLMProvider,
+		&agent.Config.LLMModel,
+		&agent.Config.Temperature,
+		&agent.Config.MaxTokens,
+		&agent.BehaviorType,
+		&capabilitiesJSON,
+		&metadataJSON,
+		&agent.CreatedAt,
+		&agent.UpdatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("agent not found: %s", id)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get agent: %w", err)
+	}
+
+	if err := json.Unmarshal(capabilitiesJSON, &agent.Capabilities); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal capabilities: %w", err)
+	}
+
+	if err := json.Unmarshal(metadataJSON, &agent.Metadata); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal metadata: %w", err)
+	}
+
+	return &agent, nil
 }
 
 func (t *PostgresTransaction) Update(ctx context.Context, agent *models.Agent) error {
-	return fmt.Errorf("not implemented")
+	query := `
+		UPDATE agents SET
+			name = $2,
+			description = $3,
+			personality = $4,
+			language = $5,
+			status = $6,
+			llm_provider = $7,
+			llm_model = $8,
+			temperature = $9,
+			max_tokens = $10,
+			behavior_type = $11,
+			capabilities = $12,
+			metadata = $13,
+			updated_at = $14
+		WHERE id = $1
+	`
+
+	capabilitiesJSON, err := json.Marshal(agent.Capabilities)
+	if err != nil {
+		return fmt.Errorf("failed to marshal capabilities: %w", err)
+	}
+
+	metadataJSON, err := json.Marshal(agent.Metadata)
+	if err != nil {
+		return fmt.Errorf("failed to marshal metadata: %w", err)
+	}
+
+	agent.UpdatedAt = time.Now()
+
+	result, err := t.tx.ExecContext(ctx, query,
+		agent.ID,
+		agent.Name,
+		agent.Description,
+		agent.Config.Personality,
+		agent.Config.Language,
+		agent.Status,
+		agent.Config.LLMProvider,
+		agent.Config.LLMModel,
+		agent.Config.Temperature,
+		agent.Config.MaxTokens,
+		agent.BehaviorType,
+		capabilitiesJSON,
+		metadataJSON,
+		agent.UpdatedAt,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to update agent: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("agent not found: %s", agent.ID)
+	}
+
+	return nil
 }
 
 func (t *PostgresTransaction) Delete(ctx context.Context, id string) error {
-	return fmt.Errorf("not implemented")
+	query := `DELETE FROM agents WHERE id = $1`
+
+	result, err := t.tx.ExecContext(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete agent: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("agent not found: %s", id)
+	}
+
+	return nil
 }
 
 func (t *PostgresTransaction) List(ctx context.Context, filter *models.ListAgentsRequest) ([]*models.Agent, int, error) {
-	return nil, 0, fmt.Errorf("not implemented")
+	query := `
+		SELECT
+			id, name, description, personality, language, status,
+			llm_provider, llm_model, temperature, max_tokens,
+			behavior_type, capabilities, metadata,
+			created_at, updated_at
+		FROM agents
+		WHERE 1=1
+	`
+	countQuery := `SELECT COUNT(*) FROM agents WHERE 1=1`
+	args := []interface{}{}
+	argPos := 1
+
+	if filter.Status != nil {
+		query += fmt.Sprintf(" AND status = $%d", argPos)
+		countQuery += fmt.Sprintf(" AND status = $%d", argPos)
+		args = append(args, *filter.Status)
+		argPos++
+	}
+
+	if filter.BehaviorType != nil {
+		query += fmt.Sprintf(" AND behavior_type = $%d", argPos)
+		countQuery += fmt.Sprintf(" AND behavior_type = $%d", argPos)
+		args = append(args, *filter.BehaviorType)
+		argPos++
+	}
+
+	var total int
+	err := t.tx.QueryRowContext(ctx, countQuery, args...).Scan(&total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count agents: %w", err)
+	}
+
+	offset := (filter.Page - 1) * filter.PageSize
+	if offset < 0 {
+		offset = 0
+	}
+	query += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d OFFSET $%d", argPos, argPos+1)
+	args = append(args, filter.PageSize, offset)
+
+	rows, err := t.tx.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list agents: %w", err)
+	}
+	defer rows.Close()
+
+	agents := make([]*models.Agent, 0)
+	for rows.Next() {
+		var agent models.Agent
+		var capabilitiesJSON, metadataJSON []byte
+
+		err := rows.Scan(
+			&agent.ID,
+			&agent.Name,
+			&agent.Description,
+			&agent.Config.Personality,
+			&agent.Config.Language,
+			&agent.Status,
+			&agent.Config.LLMProvider,
+			&agent.Config.LLMModel,
+			&agent.Config.Temperature,
+			&agent.Config.MaxTokens,
+			&agent.BehaviorType,
+			&capabilitiesJSON,
+			&metadataJSON,
+			&agent.CreatedAt,
+			&agent.UpdatedAt,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to scan agent: %w", err)
+		}
+
+		if err := json.Unmarshal(capabilitiesJSON, &agent.Capabilities); err != nil {
+			return nil, 0, fmt.Errorf("failed to unmarshal capabilities: %w", err)
+		}
+
+		if err := json.Unmarshal(metadataJSON, &agent.Metadata); err != nil {
+			return nil, 0, fmt.Errorf("failed to unmarshal metadata: %w", err)
+		}
+
+		agents = append(agents, &agent)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("error iterating agents: %w", err)
+	}
+
+	return agents, total, nil
 }
 
 func (t *PostgresTransaction) FindByBehaviorType(ctx context.Context, behaviorType string) ([]*models.Agent, error) {
-	return nil, fmt.Errorf("not implemented")
+	filter := &models.ListAgentsRequest{
+		BehaviorType: &behaviorType,
+		PageSize:     100,
+		Page:         1,
+	}
+	agents, _, err := t.List(ctx, filter)
+	return agents, err
 }
 
 func (t *PostgresTransaction) FindByStatus(ctx context.Context, status models.AgentStatus) ([]*models.Agent, error) {
-	return nil, fmt.Errorf("not implemented")
+	filter := &models.ListAgentsRequest{
+		Status:   &status,
+		PageSize: 100,
+		Page:     1,
+	}
+	agents, _, err := t.List(ctx, filter)
+	return agents, err
 }
 
 func (t *PostgresTransaction) GetMetrics(ctx context.Context, agentID string) (*models.Metrics, error) {
-	return nil, fmt.Errorf("not implemented")
+	query := `
+		SELECT
+			COALESCE(SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END), 0) as successful,
+			COALESCE(SUM(CASE WHEN status = 'failure' THEN 1 ELSE 0 END), 0) as failed,
+			COALESCE(AVG(duration_ms), 0) as avg_time,
+			COALESCE(MAX(created_at), NOW()) as last_execution
+		FROM activities
+		WHERE agent_id = $1
+	`
+
+	var metrics models.Metrics
+	metrics.AgentID = agentID
+
+	var lastExec time.Time
+	err := t.tx.QueryRowContext(ctx, query, agentID).Scan(
+		&metrics.SuccessfulExecutions,
+		&metrics.FailedExecutions,
+		&metrics.AvgExecutionTime,
+		&lastExec,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get metrics: %w", err)
+	}
+
+	metrics.TotalExecutions = metrics.SuccessfulExecutions + metrics.FailedExecutions
+	metrics.LastExecutionAt = &lastExec
+
+	return &metrics, nil
 }
 
 func (t *PostgresTransaction) UpdateMetrics(ctx context.Context, metrics *models.Metrics) error {
-	return fmt.Errorf("not implemented")
+	// Metrics are aggregated from activities, so this is a no-op
+	return nil
 }
 
 func (t *PostgresTransaction) CreateMetrics(ctx context.Context, metrics *models.Metrics) error {
-	return fmt.Errorf("not implemented")
+	// Metrics are aggregated from activities, so this is a no-op
+	return nil
 }
 
 func (t *PostgresTransaction) RecordActivity(ctx context.Context, activity *models.Activity) error {
-	return fmt.Errorf("not implemented")
+	query := `
+		INSERT INTO activities (
+			id, agent_id, action, status,
+			input, output, error, duration_ms,
+			tools_used, metadata, created_at
+		) VALUES (
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+		)
+	`
+
+	inputJSON, _ := json.Marshal(activity.Input)
+	outputJSON, _ := json.Marshal(activity.Output)
+	toolsJSON, _ := json.Marshal(activity.ToolsUsed)
+	metadataJSON, _ := json.Marshal(activity.Metadata)
+
+	var errorStr *string
+	if activity.Error != "" {
+		errorStr = &activity.Error
+	}
+
+	_, err := t.tx.ExecContext(ctx, query,
+		activity.ID,
+		activity.AgentID,
+		activity.Action,
+		activity.Status,
+		inputJSON,
+		outputJSON,
+		errorStr,
+		activity.Duration,
+		toolsJSON,
+		metadataJSON,
+		activity.CreatedAt,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to record activity: %w", err)
+	}
+
+	return nil
 }
 
 func (t *PostgresTransaction) GetActivities(ctx context.Context, agentID string, limit int) ([]*models.Activity, error) {
-	return nil, fmt.Errorf("not implemented")
+	query := `
+		SELECT
+			id, agent_id, action, status,
+			input, output, COALESCE(error, ''), duration_ms,
+			tools_used, metadata, created_at
+		FROM activities
+		WHERE agent_id = $1
+		ORDER BY created_at DESC
+		LIMIT $2
+	`
+
+	rows, err := t.tx.QueryContext(ctx, query, agentID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get activities: %w", err)
+	}
+	defer rows.Close()
+
+	activities := make([]*models.Activity, 0)
+	for rows.Next() {
+		var activity models.Activity
+		var inputJSON, outputJSON, toolsJSON, metadataJSON []byte
+
+		err := rows.Scan(
+			&activity.ID,
+			&activity.AgentID,
+			&activity.Action,
+			&activity.Status,
+			&inputJSON,
+			&outputJSON,
+			&activity.Error,
+			&activity.Duration,
+			&toolsJSON,
+			&metadataJSON,
+			&activity.CreatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan activity: %w", err)
+		}
+
+		_ = json.Unmarshal(inputJSON, &activity.Input)
+		_ = json.Unmarshal(outputJSON, &activity.Output)
+		_ = json.Unmarshal(toolsJSON, &activity.ToolsUsed)
+		_ = json.Unmarshal(metadataJSON, &activity.Metadata)
+
+		activities = append(activities, &activity)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating activities: %w", err)
+	}
+
+	return activities, nil
 }
 
 func (t *PostgresTransaction) GetActivityByID(ctx context.Context, id string) (*models.Activity, error) {
-	return nil, fmt.Errorf("not implemented")
+	query := `
+		SELECT
+			id, agent_id, action, status,
+			input, output, COALESCE(error, ''), duration_ms,
+			tools_used, metadata, created_at
+		FROM activities
+		WHERE id = $1
+	`
+
+	var activity models.Activity
+	var inputJSON, outputJSON, toolsJSON, metadataJSON []byte
+
+	err := t.tx.QueryRowContext(ctx, query, id).Scan(
+		&activity.ID,
+		&activity.AgentID,
+		&activity.Action,
+		&activity.Status,
+		&inputJSON,
+		&outputJSON,
+		&activity.Error,
+		&activity.Duration,
+		&toolsJSON,
+		&metadataJSON,
+		&activity.CreatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("activity not found: %s", id)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get activity: %w", err)
+	}
+
+	_ = json.Unmarshal(inputJSON, &activity.Input)
+	_ = json.Unmarshal(outputJSON, &activity.Output)
+	_ = json.Unmarshal(toolsJSON, &activity.ToolsUsed)
+	_ = json.Unmarshal(metadataJSON, &activity.Metadata)
+
+	return &activity, nil
 }

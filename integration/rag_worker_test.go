@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Ranganaths/minion/core/multiagent"
 	"github.com/Ranganaths/minion/embeddings"
 	"github.com/Ranganaths/minion/llm"
 	"github.com/Ranganaths/minion/vectorstore"

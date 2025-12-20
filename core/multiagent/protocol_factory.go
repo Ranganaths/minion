@@ -264,15 +264,6 @@ func getEnvOrDefaultInt(key string, defaultValue int) int {
 	return defaultValue
 }
 
-func getEnvOrDefaultDuration(key string, defaultValue time.Duration) time.Duration {
-	if value := os.Getenv(key); value != "" {
-		if duration, err := time.ParseDuration(value); err == nil {
-			return duration
-		}
-	}
-	return defaultValue
-}
-
 // InMemoryProtocolConfig configures in-memory protocol (from protocol_impl.go)
 type InMemoryProtocolConfig struct {
 	MaxQueueSize int

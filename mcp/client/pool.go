@@ -14,6 +14,8 @@ type ConnectionPool struct {
 	config      *PoolConfig
 	acquireWait map[string][]chan *PooledClient
 	metrics     *poolMetrics
+	stopCh      chan struct{} // Channel to signal cleanup goroutine to stop
+	stopped     bool          // Flag to indicate pool is stopped
 }
 
 // PoolConfig configures the connection pool
@@ -74,6 +76,8 @@ func NewConnectionPool(config *PoolConfig) *ConnectionPool {
 			idleConns:   0,
 			activeConns: 0,
 		},
+		stopCh:  make(chan struct{}),
+		stopped: false,
 	}
 
 	// Start background cleanup
@@ -198,8 +202,21 @@ func (p *ConnectionPool) Release(pooled *PooledClient, serverName string) {
 	p.mu.Unlock()
 }
 
-// Close closes all connections in the pool
+// Close closes all connections in the pool and stops the cleanup goroutine
 func (p *ConnectionPool) Close() error {
+	p.mu.Lock()
+
+	// Prevent double close
+	if p.stopped {
+		p.mu.Unlock()
+		return nil
+	}
+	p.stopped = true
+	p.mu.Unlock()
+
+	// Signal the cleanup goroutine to stop
+	close(p.stopCh)
+
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -250,8 +267,14 @@ func (p *ConnectionPool) cleanupLoop() {
 	ticker := time.NewTicker(p.config.HealthCheckPeriod)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		p.cleanup()
+	for {
+		select {
+		case <-p.stopCh:
+			// Pool is closing, exit the goroutine
+			return
+		case <-ticker.C:
+			p.cleanup()
+		}
 	}
 }
 

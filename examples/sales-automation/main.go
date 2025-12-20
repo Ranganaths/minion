@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/Ranganaths/minion/core"
@@ -82,40 +83,45 @@ func main() {
 	log.Println("\n✅ Sales automation completed successfully!")
 }
 
+func printSeparator(title string) {
+	sep := strings.Repeat("=", 60)
+	log.Println("\n" + sep)
+	log.Println(title)
+	log.Println(sep + "\n")
+}
+
 // runLeadQualificationWorkflow demonstrates lead scoring and qualification
-func runLeadQualificationWorkflow(ctx context.Context, framework core.Framework) {
-	log.Println("\n" + "="*60)
-	log.Println("🎯 WORKFLOW 1: Lead Qualification & Scoring")
-	log.Println("="*60 + "\n")
+func runLeadQualificationWorkflow(ctx context.Context, framework *core.FrameworkImpl) {
+	printSeparator("🎯 WORKFLOW 1: Lead Qualification & Scoring")
 
 	// Simulate incoming leads
 	leads := []map[string]interface{}{
 		{
-			"email":          "ceo@bigcorp.com",
-			"company":        "BigCorp Inc",
-			"job_title":      "CEO",
-			"company_size":   "1000+",
-			"budget":         "high",
-			"engagement":     85.0,
-			"source":         "referral",
+			"email":        "ceo@bigcorp.com",
+			"company":      "BigCorp Inc",
+			"job_title":    "CEO",
+			"company_size": "1000+",
+			"budget":       "high",
+			"engagement":   85.0,
+			"source":       "referral",
 		},
 		{
-			"email":          "manager@smallbiz.com",
-			"company":        "Small Business",
-			"job_title":      "Manager",
-			"company_size":   "10-50",
-			"budget":         "low",
-			"engagement":     45.0,
-			"source":         "website",
+			"email":        "manager@smallbiz.com",
+			"company":      "Small Business",
+			"job_title":    "Manager",
+			"company_size": "10-50",
+			"budget":       "low",
+			"engagement":   45.0,
+			"source":       "website",
 		},
 		{
-			"email":          "director@midsize.com",
-			"company":        "MidSize Co",
-			"job_title":      "Director",
-			"company_size":   "200-500",
-			"budget":         "medium",
-			"engagement":     70.0,
-			"source":         "webinar",
+			"email":        "director@midsize.com",
+			"company":      "MidSize Co",
+			"job_title":    "Director",
+			"company_size": "200-500",
+			"budget":       "medium",
+			"engagement":   70.0,
+			"source":       "webinar",
 		},
 	}
 
@@ -133,11 +139,11 @@ func runLeadQualificationWorkflow(ctx context.Context, framework core.Framework)
 
 		// Create lead data for scoring tool
 		leadData := map[string]interface{}{
-			"company_size":   getCompanySizeScore(lead["company_size"].(string)),
-			"job_title":      getTitleScore(lead["job_title"].(string)),
-			"budget":         getBudgetScore(lead["budget"].(string)),
-			"engagement":     lead["engagement"].(float64),
-			"source":         getSourceScore(lead["source"].(string)),
+			"company_size": getCompanySizeScore(lead["company_size"].(string)),
+			"job_title":    getTitleScore(lead["job_title"].(string)),
+			"budget":       getBudgetScore(lead["budget"].(string)),
+			"engagement":   lead["engagement"].(float64),
+			"source":       getSourceScore(lead["source"].(string)),
 		}
 
 		// Calculate lead score (simplified scoring logic)
@@ -165,11 +171,10 @@ func runLeadQualificationWorkflow(ctx context.Context, framework core.Framework)
 			log.Println("\n✅ Lead qualified! Creating opportunity...")
 
 			// Send welcome email
-			framework.ExecuteTool(ctx, "gmail_send_email", &models.ToolInput{
-				Params: map[string]interface{}{
-					"to":      lead["email"].(string),
-					"subject": fmt.Sprintf("Welcome %s!", lead["company"]),
-					"body": fmt.Sprintf(`
+			_, _ = framework.ExecuteTool(ctx, "gmail_send_email", map[string]interface{}{
+				"to":      lead["email"].(string),
+				"subject": fmt.Sprintf("Welcome %s!", lead["company"]),
+				"body": fmt.Sprintf(`
 Hi,
 
 Thank you for your interest in our solution! Based on your profile, I believe we can provide significant value to %s.
@@ -180,51 +185,48 @@ Are you available this week?
 
 Best regards,
 Sales Team
-					`, lead["company"]),
-				},
+				`, lead["company"]),
 			})
 
 			log.Println("📧 Sent welcome email")
 
 			// Notify sales team on Slack
-			framework.ExecuteTool(ctx, "slack_send_message", &models.ToolInput{
-				Params: map[string]interface{}{
-					"channel": "#sales-qualified-leads",
-					"message": "🎯 New Qualified Lead!",
-					"attachments": []map[string]interface{}{
-						{
-							"color": "#00ff00",
-							"title": lead["company"].(string),
-							"fields": []map[string]interface{}{
-								{
-									"title": "Contact",
-									"value": fmt.Sprintf("%s (%s)", lead["email"], lead["job_title"]),
-									"short": false,
-								},
-								{
-									"title": "Lead Score",
-									"value": fmt.Sprintf("%.1f/100", totalScore),
-									"short": true,
-								},
-								{
-									"title": "Quality",
-									"value": leadQuality,
-									"short": true,
-								},
-								{
-									"title": "Company Size",
-									"value": lead["company_size"].(string),
-									"short": true,
-								},
-								{
-									"title": "Source",
-									"value": lead["source"].(string),
-									"short": true,
-								},
+			_, _ = framework.ExecuteTool(ctx, "slack_send_message", map[string]interface{}{
+				"channel": "#sales-qualified-leads",
+				"message": "🎯 New Qualified Lead!",
+				"attachments": []map[string]interface{}{
+					{
+						"color": "#00ff00",
+						"title": lead["company"].(string),
+						"fields": []map[string]interface{}{
+							{
+								"title": "Contact",
+								"value": fmt.Sprintf("%s (%s)", lead["email"], lead["job_title"]),
+								"short": false,
 							},
-							"footer": "Sales Automation",
-							"ts":     time.Now().Unix(),
+							{
+								"title": "Lead Score",
+								"value": fmt.Sprintf("%.1f/100", totalScore),
+								"short": true,
+							},
+							{
+								"title": "Quality",
+								"value": leadQuality,
+								"short": true,
+							},
+							{
+								"title": "Company Size",
+								"value": lead["company_size"].(string),
+								"short": true,
+							},
+							{
+								"title": "Source",
+								"value": lead["source"].(string),
+								"short": true,
+							},
 						},
+						"footer": "Sales Automation",
+						"ts":     time.Now().Unix(),
 					},
 				},
 			})
@@ -235,11 +237,10 @@ Sales Team
 			log.Printf("❌ Lead score too low (%.1f < 70) - Added to nurture campaign\n", totalScore)
 
 			// Add to nurture email campaign
-			framework.ExecuteTool(ctx, "gmail_send_email", &models.ToolInput{
-				Params: map[string]interface{}{
-					"to":      lead["email"].(string),
-					"subject": "Resources that might interest you",
-					"body": `
+			_, _ = framework.ExecuteTool(ctx, "gmail_send_email", map[string]interface{}{
+				"to":      lead["email"].(string),
+				"subject": "Resources that might interest you",
+				"body": `
 Hi,
 
 Thank you for your interest! Here are some resources that might help:
@@ -252,8 +253,7 @@ Feel free to reach out if you have any questions!
 
 Best regards,
 Marketing Team
-					`,
-				},
+				`,
 			})
 
 			log.Println("📧 Added to nurture campaign")
@@ -265,10 +265,8 @@ Marketing Team
 }
 
 // runDealScoringWorkflow prioritizes deals in the pipeline
-func runDealScoringWorkflow(ctx context.Context, framework core.Framework) {
-	log.Println("\n" + "="*60)
-	log.Println("💼 WORKFLOW 2: Deal Scoring & Prioritization")
-	log.Println("="*60 + "\n")
+func runDealScoringWorkflow(ctx context.Context, framework *core.FrameworkImpl) {
+	printSeparator("💼 WORKFLOW 2: Deal Scoring & Prioritization")
 
 	// Simulate active deals
 	deals := []map[string]interface{}{
@@ -297,69 +295,66 @@ func runDealScoringWorkflow(ctx context.Context, framework core.Framework) {
 
 	log.Printf("📋 Scoring %d deals in pipeline...\n", len(deals))
 
-	scoredDeals := []map[string]interface{}{}
-
 	for _, deal := range deals {
 		log.Printf("\n--- %s: %s ---\n", deal["id"], deal["company"])
 
 		// Score the deal
-		scoreOutput, _ := framework.ExecuteTool(ctx, "deal_scoring", &models.ToolInput{
-			Params: map[string]interface{}{
-				"deal": deal,
-			},
+		scoreOutput, _ := framework.ExecuteTool(ctx, "deal_scoring", map[string]interface{}{
+			"deal": deal,
 		})
+
+		if scoreOutput == nil || scoreOutput.Result == nil {
+			log.Println("❌ Failed to score deal")
+			continue
+		}
 
 		result := scoreOutput.Result.(map[string]interface{})
 		score := result["score"].(float64)
 		priority := result["priority"].(string)
-		recommendations := result["recommended"].([]string)
 
 		log.Printf("Deal Score: %.1f/100\n", score)
 		log.Printf("Priority: %s\n", priority)
 
 		deal["score"] = score
 		deal["priority"] = priority
-		scoredDeals = append(scoredDeals, deal)
 
-		// Show recommendations
-		if len(recommendations) > 0 {
+		// Show recommendations if available
+		if recs, ok := result["recommended"].([]string); ok && len(recs) > 0 {
 			log.Println("\n💡 Recommendations:")
-			for _, rec := range recommendations {
+			for _, rec := range recs {
 				log.Printf("  • %s\n", rec)
 			}
 		}
 
 		// Alert for high-priority deals
 		if priority == "high" {
-			framework.ExecuteTool(ctx, "slack_send_message", &models.ToolInput{
-				Params: map[string]interface{}{
-					"channel": "#sales-team",
-					"message": "🚀 High Priority Deal Alert!",
-					"attachments": []map[string]interface{}{
-						{
-							"color": "#ff9900",
-							"title": fmt.Sprintf("%s - $%.0f", deal["company"], deal["value"]),
-							"fields": []map[string]interface{}{
-								{
-									"title": "Deal ID",
-									"value": deal["id"],
-									"short": true,
-								},
-								{
-									"title": "Score",
-									"value": fmt.Sprintf("%.1f/100", score),
-									"short": true,
-								},
-								{
-									"title": "Stage",
-									"value": deal["stage"],
-									"short": true,
-								},
-								{
-									"title": "Age",
-									"value": fmt.Sprintf("%.0f days", deal["age_days"]),
-									"short": true,
-								},
+			_, _ = framework.ExecuteTool(ctx, "slack_send_message", map[string]interface{}{
+				"channel": "#sales-team",
+				"message": "🚀 High Priority Deal Alert!",
+				"attachments": []map[string]interface{}{
+					{
+						"color": "#ff9900",
+						"title": fmt.Sprintf("%s - $%.0f", deal["company"], deal["value"]),
+						"fields": []map[string]interface{}{
+							{
+								"title": "Deal ID",
+								"value": deal["id"],
+								"short": true,
+							},
+							{
+								"title": "Score",
+								"value": fmt.Sprintf("%.1f/100", score),
+								"short": true,
+							},
+							{
+								"title": "Stage",
+								"value": deal["stage"],
+								"short": true,
+							},
+							{
+								"title": "Age",
+								"value": fmt.Sprintf("%.0f days", deal["age_days"]),
+								"short": true,
 							},
 						},
 					},
@@ -372,10 +367,8 @@ func runDealScoringWorkflow(ctx context.Context, framework core.Framework) {
 }
 
 // runRevenueForecasting generates revenue forecasts
-func runRevenueForecasting(ctx context.Context, framework core.Framework) {
-	log.Println("\n" + "="*60)
-	log.Println("📈 WORKFLOW 3: Revenue Forecasting")
-	log.Println("="*60 + "\n")
+func runRevenueForecasting(ctx context.Context, framework *core.FrameworkImpl) {
+	printSeparator("📈 WORKFLOW 3: Revenue Forecasting")
 
 	// Historical revenue data (monthly)
 	historicalRevenue := []float64{
@@ -386,17 +379,25 @@ func runRevenueForecasting(ctx context.Context, framework core.Framework) {
 	log.Printf("Historical data: %d months\n", len(historicalRevenue))
 
 	// Generate forecast
-	forecastOutput, _ := framework.ExecuteTool(ctx, "sales_forecasting", &models.ToolInput{
-		Params: map[string]interface{}{
-			"historical_data": historicalRevenue,
-			"periods":         3,
-		},
+	forecastOutput, _ := framework.ExecuteTool(ctx, "sales_forecasting", map[string]interface{}{
+		"historical_data": historicalRevenue,
+		"periods":         3,
 	})
 
+	if forecastOutput == nil || forecastOutput.Result == nil {
+		log.Println("❌ Failed to generate forecast")
+		return
+	}
+
 	forecast := forecastOutput.Result.(map[string]interface{})
-	predictions := forecast["forecast"].([]float64)
-	confidence := forecast["confidence"].(float64)
-	trend := forecast["trend"].(float64)
+	predictions, _ := forecast["forecast"].([]float64)
+	confidence, _ := forecast["confidence"].(float64)
+	trend, _ := forecast["trend"].(float64)
+
+	if predictions == nil || len(predictions) < 3 {
+		log.Println("❌ Invalid forecast data")
+		return
+	}
 
 	log.Println("\n📈 Forecast Results:")
 	log.Printf("Confidence: %.1f%%\n", confidence*100)
@@ -414,11 +415,10 @@ func runRevenueForecasting(ctx context.Context, framework core.Framework) {
 	// Send forecast to leadership
 	log.Println("\n📧 Sending forecast to sales leadership...")
 
-	framework.ExecuteTool(ctx, "gmail_send_email", &models.ToolInput{
-		Params: map[string]interface{}{
-			"to":      "sales-leadership@company.com",
-			"subject": fmt.Sprintf("Q%d Revenue Forecast - $%.0fK", time.Now().Month()/3+1, totalForecast/1000),
-			"body": fmt.Sprintf(`
+	_, _ = framework.ExecuteTool(ctx, "gmail_send_email", map[string]interface{}{
+		"to":      "sales-leadership@company.com",
+		"subject": fmt.Sprintf("Q%d Revenue Forecast - $%.0fK", time.Now().Month()/3+1, totalForecast/1000),
+		"body": fmt.Sprintf(`
 Sales Leadership Team,
 
 Based on the last 6 months of data, here is the revenue forecast for the next quarter:
@@ -437,33 +437,30 @@ The upward trend suggests we're on track to meet our quarterly target.
 
 Best regards,
 Sales Analytics
-			`, sum(historicalRevenue)/float64(len(historicalRevenue))/1000,
-				totalForecast/1000, trend/1000, confidence*100,
-				predictions[0]/1000, predictions[1]/1000, predictions[2]/1000),
-			"is_html": false,
-		},
+		`, sum(historicalRevenue)/float64(len(historicalRevenue))/1000,
+			totalForecast/1000, trend/1000, confidence*100,
+			predictions[0]/1000, predictions[1]/1000, predictions[2]/1000),
+		"is_html": false,
 	})
 
 	// Post to Slack
-	framework.ExecuteTool(ctx, "slack_send_message", &models.ToolInput{
-		Params: map[string]interface{}{
-			"channel": "#sales-analytics",
-			"message": "📈 Revenue Forecast Updated",
-			"attachments": []map[string]interface{}{
-				{
-					"color": "#0000ff",
-					"title": fmt.Sprintf("Q%d Forecast: $%.0fK", time.Now().Month()/3+1, totalForecast/1000),
-					"fields": []map[string]interface{}{
-						{
-							"title": "Confidence",
-							"value": fmt.Sprintf("%.1f%%", confidence*100),
-							"short": true,
-						},
-						{
-							"title": "Monthly Trend",
-							"value": fmt.Sprintf("$%.0fK", trend/1000),
-							"short": true,
-						},
+	_, _ = framework.ExecuteTool(ctx, "slack_send_message", map[string]interface{}{
+		"channel": "#sales-analytics",
+		"message": "📈 Revenue Forecast Updated",
+		"attachments": []map[string]interface{}{
+			{
+				"color": "#0000ff",
+				"title": fmt.Sprintf("Q%d Forecast: $%.0fK", time.Now().Month()/3+1, totalForecast/1000),
+				"fields": []map[string]interface{}{
+					{
+						"title": "Confidence",
+						"value": fmt.Sprintf("%.1f%%", confidence*100),
+						"short": true,
+					},
+					{
+						"title": "Monthly Trend",
+						"value": fmt.Sprintf("$%.0fK", trend/1000),
+						"short": true,
 					},
 				},
 			},
@@ -474,30 +471,28 @@ Sales Analytics
 }
 
 // runAutomatedFollowUpWorkflow manages deal follow-ups
-func runAutomatedFollowUpWorkflow(ctx context.Context, framework core.Framework) {
-	log.Println("\n" + "="*60)
-	log.Println("⏰ WORKFLOW 4: Automated Follow-Up Management")
-	log.Println("="*60 + "\n")
+func runAutomatedFollowUpWorkflow(ctx context.Context, framework *core.FrameworkImpl) {
+	printSeparator("⏰ WORKFLOW 4: Automated Follow-Up Management")
 
 	// Simulate deals requiring follow-up
 	dealsToFollow := []map[string]interface{}{
 		{
-			"id":              "DEAL-001",
-			"company":         "TechCorp",
-			"contact_email":   "buyer@techcorp.com",
-			"contact_name":    "Jane Smith",
-			"last_contact":    7, // days ago
-			"stage":           "proposal",
-			"deal_value":      120000.0,
+			"id":            "DEAL-001",
+			"company":       "TechCorp",
+			"contact_email": "buyer@techcorp.com",
+			"contact_name":  "Jane Smith",
+			"last_contact":  7, // days ago
+			"stage":         "proposal",
+			"deal_value":    120000.0,
 		},
 		{
-			"id":              "DEAL-002",
-			"company":         "InnovateLabs",
-			"contact_email":   "cto@innovatelabs.com",
-			"contact_name":    "Bob Johnson",
-			"last_contact":    14,
-			"stage":           "negotiation",
-			"deal_value":      85000.0,
+			"id":            "DEAL-002",
+			"company":       "InnovateLabs",
+			"contact_email": "cto@innovatelabs.com",
+			"contact_name":  "Bob Johnson",
+			"last_contact":  14,
+			"stage":         "negotiation",
+			"deal_value":    85000.0,
 		},
 	}
 
@@ -543,23 +538,19 @@ Sales Team
 		log.Println("📧 Sending follow-up email...")
 
 		// Send follow-up email
-		framework.ExecuteTool(ctx, "gmail_send_email", &models.ToolInput{
-			Params: map[string]interface{}{
-				"to":      deal["contact_email"].(string),
-				"subject": subject,
-				"body":    body,
-			},
+		_, _ = framework.ExecuteTool(ctx, "gmail_send_email", map[string]interface{}{
+			"to":      deal["contact_email"].(string),
+			"subject": subject,
+			"body":    body,
 		})
 
 		log.Printf("✅ Follow-up sent to %s\n", deal["contact_name"])
 
 		// Log activity to Slack
-		framework.ExecuteTool(ctx, "slack_send_message", &models.ToolInput{
-			Params: map[string]interface{}{
-				"channel": "#sales-activity",
-				"message": fmt.Sprintf("📧 Follow-up sent: %s (%s) - Deal value: $%.0f",
-					deal["company"], deal["id"], deal["deal_value"]),
-			},
+		_, _ = framework.ExecuteTool(ctx, "slack_send_message", map[string]interface{}{
+			"channel": "#sales-activity",
+			"message": fmt.Sprintf("📧 Follow-up sent: %s (%s) - Deal value: $%.0f",
+				deal["company"], deal["id"], deal["deal_value"]),
 		})
 
 		// Schedule reminder for next follow-up
@@ -589,11 +580,11 @@ func getCompanySizeScore(size string) float64 {
 
 func getTitleScore(title string) float64 {
 	title = fmt.Sprintf("%v", title)
-	if contains(title, "ceo") || contains(title, "founder") {
+	if containsIgnoreCase(title, "ceo") || containsIgnoreCase(title, "founder") {
 		return 100
-	} else if contains(title, "cto") || contains(title, "vp") || contains(title, "director") {
+	} else if containsIgnoreCase(title, "cto") || containsIgnoreCase(title, "vp") || containsIgnoreCase(title, "director") {
 		return 80
-	} else if contains(title, "manager") {
+	} else if containsIgnoreCase(title, "manager") {
 		return 60
 	}
 	return 40
@@ -635,7 +626,7 @@ func getLeadQuality(score float64) string {
 	return "Cold"
 }
 
-func contains(s, substr string) bool {
+func containsIgnoreCase(s, substr string) bool {
 	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
 }
 

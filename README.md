@@ -20,15 +20,33 @@ Minion is a standalone framework that can be used in any Go project for building
 
 ## ✨ Features
 
+### Core Framework
 - 🤖 **Agent Management** - Complete CRUD operations with metrics and activity tracking
 - 🧠 **Pluggable Behaviors** - Define custom processing logic for specialized agents
 - 🛠️ **Tool System** - Extensible tools with capability-based filtering
-- 💾 **Storage Abstraction** - In-memory, PostgreSQL, or custom backends
-- 🔌 **LLM Provider Support** - OpenAI, Anthropic, or custom providers
+- 💾 **Storage Abstraction** - In-memory, PostgreSQL (with full transaction support), or custom backends
 - 📊 **Built-in Observability** - Metrics, activity logs, and performance tracking
 - ⚡ **Thread-Safe** - Concurrent operations with proper synchronization
 - 🎨 **Highly Extensible** - Easy to add new behaviors, tools, and providers
-- 🤝 **Multi-Agent Collaboration** - Research-based orchestrator pattern with specialized workers (NEW!)
+
+### Multi-Agent System
+- 🤝 **Multi-Agent Collaboration** - Research-based orchestrator pattern with specialized workers
+- 🔄 **KQML Protocol** - Industry-standard inter-agent communication
+- 📋 **Task Decomposition** - LLM-powered planning and task breakdown
+- 👷 **Specialized Workers** - Coder, Analyst, Researcher, Writer, Reviewer agents
+
+### LLM Providers
+- 🔌 **OpenAI** - GPT-4, GPT-3.5-turbo support
+- 🔌 **Anthropic** - Claude models support
+- 🔌 **TupleLeap** - TupleLeap AI integration
+- 🔌 **Custom Providers** - Easy to add your own
+
+### Production Features
+- 🔒 **HTTP Authentication** - Bearer, API Key, and OAuth support for MCP
+- 🔄 **Connection Pooling** - Efficient resource management with graceful shutdown
+- ✅ **Schema Validation** - JSON Schema validation with regex pattern support
+- 🛡️ **Error Handling** - Safe environment config with error returns (no panics)
+- 📈 **Chain System** - LangChain-style chains for RAG and workflows
 
 ## 📦 Installation
 
@@ -228,9 +246,27 @@ for _, activity := range activities {
 ### OpenAI
 
 ```go
-import "github.com/ranganaths/minion/llm"
+import "github.com/Ranganaths/minion/llm"
 
-provider := llm.NewOpenAI(apiKey)
+provider := llm.NewOpenAI(os.Getenv("OPENAI_API_KEY"))
+framework := core.NewFramework(
+    core.WithLLMProvider(provider),
+)
+```
+
+### Anthropic (Claude)
+
+```go
+provider := llm.NewAnthropic(os.Getenv("ANTHROPIC_API_KEY"))
+framework := core.NewFramework(
+    core.WithLLMProvider(provider),
+)
+```
+
+### TupleLeap
+
+```go
+provider := llm.NewTupleLeap(os.Getenv("TUPLELEAP_API_KEY"))
 framework := core.NewFramework(
     core.WithLLMProvider(provider),
 )
@@ -284,11 +320,28 @@ framework := core.NewFramework(
 
 ## 📖 Examples
 
-Check out the `examples/` directory:
+Check out the `examples/` directory for 13 comprehensive examples:
 
+### Core Examples
 - **`examples/basic/`** - Simple agent creation and execution
 - **`examples/with_tools/`** - Custom tools with capability filtering
 - **`examples/custom_behavior/`** - Specialized agent behaviors
+
+### Multi-Agent Examples
+- **`examples/multiagent-basic/`** - Basic multi-agent coordinator usage
+- **`examples/multiagent-custom/`** - Custom worker agents
+- **`examples/llm_worker/`** - LLM-powered worker agents
+
+### Business Domain Examples
+- **`examples/sales_agent/`** - Sales analyst with visualization tools
+- **`examples/sales-automation/`** - Automated sales workflows
+- **`examples/business_automation/`** - Business process automation
+- **`examples/customer-support/`** - Customer support agent
+- **`examples/devops-automation/`** - DevOps task automation
+
+### Integration Examples
+- **`examples/domain_tools/`** - Domain-specific tools (marketing, sales)
+- **`examples/tupleleap_example/`** - TupleLeap LLM provider integration
 
 Run an example:
 
@@ -391,13 +444,21 @@ result, err := coordinator.ExecuteTask(ctx, &multiagent.TaskRequest{
 
 ## 🛣️ Roadmap
 
-- [ ] Additional LLM providers (Anthropic, Google Gemini, local models)
-- [ ] PostgreSQL storage backend
+### Completed ✅
+- [x] **Multi-agent collaboration** - Research-based orchestrator with specialized workers
+- [x] **Multiple LLM providers** - OpenAI, Anthropic, TupleLeap
+- [x] **PostgreSQL storage** - Full transaction support
+- [x] **MCP Integration** - Model Context Protocol with HTTP authentication
+- [x] **Chain System** - LangChain-style RAG and workflow chains
+- [x] **Production hardening** - Connection pooling, graceful shutdown, error handling
+
+### In Progress
 - [ ] Streaming responses
-- [x] **Multi-agent collaboration** ✅ **COMPLETED!**
 - [ ] Advanced observability (distributed tracing)
 - [ ] Web UI for agent management
 - [ ] Plugin system
+- [ ] Google Gemini provider
+- [ ] Local model support (Ollama)
 
 ## 📄 License
 

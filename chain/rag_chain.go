@@ -138,7 +138,10 @@ func (c *RAGChain) Call(ctx context.Context, inputs map[string]any) (map[string]
 	var docs []vectorstore.Document
 
 	if existingContext, ok := inputs[c.contextKey]; ok {
-		contextStr, _ = existingContext.(string)
+		if str, isString := existingContext.(string); isString {
+			contextStr = str
+		}
+		// Non-string context values are ignored, triggering document retrieval
 	}
 
 	// If no context provided, retrieve documents
@@ -222,7 +225,10 @@ func (c *RAGChain) Stream(ctx context.Context, inputs map[string]any) (<-chan St
 		var docs []vectorstore.Document
 
 		if existingContext, ok := inputs[c.contextKey]; ok {
-			contextStr, _ = existingContext.(string)
+			if str, isString := existingContext.(string); isString {
+				contextStr = str
+			}
+			// Non-string context values are ignored, triggering document retrieval
 		}
 
 		// If no context provided, retrieve documents

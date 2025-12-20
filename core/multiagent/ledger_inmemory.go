@@ -2,6 +2,7 @@ package multiagent
 
 import (
 	"context"
+	"errors"
 	"time"
 )
 
@@ -42,7 +43,7 @@ func (iml *InMemoryLedger) CompleteTask(ctx context.Context, taskID string, resu
 
 // FailTask marks a task as failed
 func (iml *InMemoryLedger) FailTask(ctx context.Context, taskID string, errMsg string) error {
-	return iml.taskLedger.FailTask(ctx, taskID, errMsg)
+	return iml.taskLedger.FailTask(ctx, taskID, errors.New(errMsg))
 }
 
 // DeleteTask deletes a task
@@ -134,17 +135,20 @@ func (iml *InMemoryLedger) RecordProgress(ctx context.Context, progress *Progres
 
 // GetProgress retrieves all progress updates for a task
 func (iml *InMemoryLedger) GetProgress(ctx context.Context, taskID string) ([]*ProgressUpdate, error) {
-	updates := iml.progressLedger.GetProgress(ctx, taskID)
+	entries, err := iml.progressLedger.GetProgress(ctx, taskID)
+	if err != nil {
+		return nil, err
+	}
 
 	// Convert to ProgressUpdate format
 	var result []*ProgressUpdate
-	for _, update := range updates {
+	for _, entry := range entries {
 		result = append(result, &ProgressUpdate{
-			TaskID:     update.TaskID,
-			AgentID:    update.AgentID,
-			Status:     update.Status,
-			Message:    update.Message,
-			RecordedAt: update.Timestamp,
+			TaskID:     entry.TaskID,
+			AgentID:    entry.AgentID,
+			Status:     TaskStatus(entry.Status),
+			Message:    entry.Description,
+			RecordedAt: entry.CreatedAt,
 		})
 	}
 
@@ -153,21 +157,24 @@ func (iml *InMemoryLedger) GetProgress(ctx context.Context, taskID string) ([]*P
 
 // GetLatestProgress retrieves the latest progress update for a task
 func (iml *InMemoryLedger) GetLatestProgress(ctx context.Context, taskID string) (*ProgressUpdate, error) {
-	updates := iml.progressLedger.GetProgress(ctx, taskID)
+	entries, err := iml.progressLedger.GetProgress(ctx, taskID)
+	if err != nil {
+		return nil, err
+	}
 
-	if len(updates) == 0 {
+	if len(entries) == 0 {
 		return nil, nil
 	}
 
-	// Get the latest update
-	latest := updates[len(updates)-1]
+	// Get the latest entry
+	latest := entries[len(entries)-1]
 
 	return &ProgressUpdate{
 		TaskID:     latest.TaskID,
 		AgentID:    latest.AgentID,
-		Status:     latest.Status,
-		Message:    latest.Message,
-		RecordedAt: latest.Timestamp,
+		Status:     TaskStatus(latest.Status),
+		Message:    latest.Description,
+		RecordedAt: latest.CreatedAt,
 	}, nil
 }
 
@@ -239,8 +246,8 @@ func (iml *InMemoryLedger) Stats(ctx context.Context) (*LedgerStats, error) {
 
 	// Count progress updates
 	for _, task := range tasks {
-		updates := iml.progressLedger.GetProgress(ctx, task.ID)
-		stats.TotalProgress += int64(len(updates))
+		entries, _ := iml.progressLedger.GetProgress(ctx, task.ID)
+		stats.TotalProgress += int64(len(entries))
 	}
 
 	return stats, nil

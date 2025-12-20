@@ -29,8 +29,9 @@ type stdioTransport struct {
 	connected bool
 	mu        sync.RWMutex
 
-	// Reader goroutine
+	// Reader goroutines
 	readerDone chan struct{}
+	stderrDone chan struct{}
 }
 
 // jsonrpcRequest represents a JSON-RPC 2.0 request
@@ -66,6 +67,7 @@ func newStdioTransport(config *ClientConfig) (Transport, error) {
 		config:     config,
 		pending:    make(map[int64]chan *jsonrpcResponse),
 		readerDone: make(chan struct{}),
+		stderrDone: make(chan struct{}),
 	}, nil
 }
 
@@ -200,8 +202,9 @@ func (t *stdioTransport) Close() error {
 		t.cmd.Wait()
 	}
 
-	// Wait for reader to finish
+	// Wait for reader goroutines to finish
 	<-t.readerDone
+	<-t.stderrDone
 
 	t.connected = false
 
@@ -275,6 +278,8 @@ func (t *stdioTransport) readLoop() {
 
 // readStderr reads and logs stderr output
 func (t *stdioTransport) readStderr() {
+	defer close(t.stderrDone)
+
 	scanner := bufio.NewScanner(t.stderr)
 	for scanner.Scan() {
 		// In production, you might want to log this

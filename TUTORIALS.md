@@ -27,6 +27,17 @@
 - [Tutorial 11: Monitoring and Observability](#tutorial-11-monitoring-and-observability)
 - [Tutorial 12: Performance Optimization](#tutorial-12-performance-optimization)
 
+### LLM Provider Tutorials
+- [Tutorial 13: OpenAI Integration](#tutorial-13-openai-integration)
+- [Tutorial 14: Anthropic Claude Integration](#tutorial-14-anthropic-claude-integration)
+- [Tutorial 15: TupleLeap Integration](#tutorial-15-tupleleap-integration)
+- [Tutorial 16: Ollama Local Models](#tutorial-16-ollama-local-models)
+
+### RAG & Chain Tutorials
+- [Tutorial 17: Building RAG Pipelines](#tutorial-17-building-rag-pipelines)
+- [Tutorial 18: LangChain-Style Chains](#tutorial-18-langchain-style-chains)
+- [Tutorial 19: MCP Tool Integration](#tutorial-19-mcp-tool-integration)
+
 ### Real-World Examples
 - [Example 1: Data Processing Pipeline](#example-1-data-processing-pipeline)
 - [Example 2: Web Scraping Swarm](#example-2-web-scraping-swarm)
@@ -2456,6 +2467,849 @@ func main() {
     }
 }
 ```
+
+---
+
+## Tutorial 13: OpenAI Integration
+
+**Time: 15 minutes**
+**Goal: Configure and use OpenAI as your LLM provider**
+
+### Step 1: Setup OpenAI Provider
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+
+    "github.com/Ranganaths/minion/core"
+    "github.com/Ranganaths/minion/llm"
+    "github.com/Ranganaths/minion/models"
+    "github.com/Ranganaths/minion/storage"
+)
+
+func main() {
+    ctx := context.Background()
+
+    // Create OpenAI provider
+    provider := llm.NewOpenAI(os.Getenv("OPENAI_API_KEY"))
+
+    // Initialize framework with OpenAI
+    framework := core.NewFramework(
+        core.WithStorage(storage.NewInMemory()),
+        core.WithLLMProvider(provider),
+    )
+    defer framework.Close()
+
+    // Create agent with GPT-4
+    agent, err := framework.CreateAgent(ctx, &models.CreateAgentRequest{
+        Name:         "GPT-4 Agent",
+        Description:  "Powered by OpenAI GPT-4",
+        BehaviorType: "default",
+        Config: models.AgentConfig{
+            LLMProvider: "openai",
+            LLMModel:    "gpt-4",
+            Temperature: 0.7,
+            MaxTokens:   1000,
+        },
+    })
+    if err != nil {
+        panic(err)
+    }
+
+    // Activate and execute
+    activeStatus := models.StatusActive
+    agent, _ = framework.UpdateAgent(ctx, agent.ID, &models.UpdateAgentRequest{
+        Status: &activeStatus,
+    })
+
+    output, err := framework.Execute(ctx, agent.ID, &models.Input{
+        Raw:  "Explain the benefits of multi-agent systems in 3 bullet points",
+        Type: "text",
+    })
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Printf("Response: %v\n", output.Result)
+}
+```
+
+### What You Learned
+- ✅ How to configure OpenAI provider
+- ✅ How to set model parameters (temperature, max tokens)
+- ✅ How to create and execute agents with OpenAI
+
+---
+
+## Tutorial 14: Anthropic Claude Integration
+
+**Time: 15 minutes**
+**Goal: Use Anthropic Claude models**
+
+### Step 1: Setup Anthropic Provider
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+
+    "github.com/Ranganaths/minion/core"
+    "github.com/Ranganaths/minion/llm"
+    "github.com/Ranganaths/minion/models"
+    "github.com/Ranganaths/minion/storage"
+)
+
+func main() {
+    ctx := context.Background()
+
+    // Create Anthropic provider
+    provider := llm.NewAnthropic(os.Getenv("ANTHROPIC_API_KEY"))
+
+    framework := core.NewFramework(
+        core.WithStorage(storage.NewInMemory()),
+        core.WithLLMProvider(provider),
+    )
+    defer framework.Close()
+
+    // Create agent with Claude 3
+    agent, _ := framework.CreateAgent(ctx, &models.CreateAgentRequest{
+        Name:         "Claude Agent",
+        Description:  "Powered by Anthropic Claude",
+        BehaviorType: "default",
+        Config: models.AgentConfig{
+            LLMProvider: "anthropic",
+            LLMModel:    "claude-3-sonnet-20240229",
+            Temperature: 0.7,
+            MaxTokens:   1000,
+        },
+    })
+
+    // Activate
+    activeStatus := models.StatusActive
+    framework.UpdateAgent(ctx, agent.ID, &models.UpdateAgentRequest{
+        Status: &activeStatus,
+    })
+
+    output, _ := framework.Execute(ctx, agent.ID, &models.Input{
+        Raw:  "Write a haiku about artificial intelligence",
+        Type: "text",
+    })
+
+    fmt.Printf("Claude says:\n%v\n", output.Result)
+}
+```
+
+### What You Learned
+- ✅ How to configure Anthropic provider
+- ✅ How to use Claude models in agents
+- ✅ Model naming conventions for Anthropic
+
+---
+
+## Tutorial 15: TupleLeap Integration
+
+**Time: 15 minutes**
+**Goal: Use TupleLeap AI for cost-effective LLM inference**
+
+### Step 1: Setup TupleLeap Provider
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+
+    "github.com/Ranganaths/minion/core"
+    "github.com/Ranganaths/minion/llm"
+    "github.com/Ranganaths/minion/models"
+    "github.com/Ranganaths/minion/storage"
+)
+
+func main() {
+    ctx := context.Background()
+
+    // Create TupleLeap provider
+    provider := llm.NewTupleLeap(os.Getenv("TUPLELEAP_API_KEY"))
+
+    framework := core.NewFramework(
+        core.WithStorage(storage.NewInMemory()),
+        core.WithLLMProvider(provider),
+    )
+    defer framework.Close()
+
+    // Create agent
+    agent, _ := framework.CreateAgent(ctx, &models.CreateAgentRequest{
+        Name:         "TupleLeap Agent",
+        Description:  "Cost-effective AI assistant",
+        BehaviorType: "default",
+        Config: models.AgentConfig{
+            LLMProvider: "tupleleap",
+            Temperature: 0.7,
+            MaxTokens:   500,
+        },
+    })
+
+    activeStatus := models.StatusActive
+    framework.UpdateAgent(ctx, agent.ID, &models.UpdateAgentRequest{
+        Status: &activeStatus,
+    })
+
+    output, _ := framework.Execute(ctx, agent.ID, &models.Input{
+        Raw:  "Summarize the key features of the Minion framework",
+        Type: "text",
+    })
+
+    fmt.Printf("Response: %v\n", output.Result)
+}
+```
+
+### Step 2: Multi-Agent with TupleLeap
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+
+    "github.com/Ranganaths/minion/core/multiagent"
+    "github.com/Ranganaths/minion/llm"
+)
+
+func main() {
+    ctx := context.Background()
+
+    // TupleLeap for cost-effective multi-agent
+    provider := llm.NewTupleLeap(os.Getenv("TUPLELEAP_API_KEY"))
+
+    // Create coordinator with TupleLeap
+    coordinator := multiagent.NewCoordinator(provider, nil)
+    coordinator.Initialize(ctx)
+
+    // Execute complex task
+    result, _ := coordinator.ExecuteTask(ctx, &multiagent.TaskRequest{
+        Name:        "Market Analysis",
+        Description: "Analyze market trends for Q4 2024",
+        Type:        "analysis",
+        Priority:    multiagent.PriorityHigh,
+    })
+
+    fmt.Printf("Analysis result: %v\n", result)
+}
+```
+
+### What You Learned
+- ✅ How to configure TupleLeap provider
+- ✅ Cost-effective LLM usage
+- ✅ TupleLeap in multi-agent systems
+
+---
+
+## Tutorial 16: Ollama Local Models
+
+**Time: 20 minutes**
+**Goal: Run models locally with Ollama**
+
+### Step 1: Setup Ollama
+
+```bash
+# Install Ollama
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Pull a model
+ollama pull llama2
+ollama pull mistral
+```
+
+### Step 2: Use Ollama Provider
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+
+    "github.com/Ranganaths/minion/core"
+    "github.com/Ranganaths/minion/llm"
+    "github.com/Ranganaths/minion/models"
+    "github.com/Ranganaths/minion/storage"
+)
+
+func main() {
+    ctx := context.Background()
+
+    // Create Ollama provider (local, no API key needed)
+    provider := llm.NewOllama("http://localhost:11434")
+
+    framework := core.NewFramework(
+        core.WithStorage(storage.NewInMemory()),
+        core.WithLLMProvider(provider),
+    )
+    defer framework.Close()
+
+    // Create agent with local Llama2
+    agent, _ := framework.CreateAgent(ctx, &models.CreateAgentRequest{
+        Name:         "Local Agent",
+        Description:  "Privacy-first local AI",
+        BehaviorType: "default",
+        Config: models.AgentConfig{
+            LLMProvider: "ollama",
+            LLMModel:    "llama2",
+            Temperature: 0.7,
+            MaxTokens:   500,
+        },
+    })
+
+    activeStatus := models.StatusActive
+    framework.UpdateAgent(ctx, agent.ID, &models.UpdateAgentRequest{
+        Status: &activeStatus,
+    })
+
+    output, _ := framework.Execute(ctx, agent.ID, &models.Input{
+        Raw:  "What are the advantages of running AI models locally?",
+        Type: "text",
+    })
+
+    fmt.Printf("Local Llama2: %v\n", output.Result)
+}
+```
+
+### What You Learned
+- ✅ How to install and run Ollama
+- ✅ How to use local models in Minion
+- ✅ Privacy-first AI deployment
+
+---
+
+## Tutorial 17: Building RAG Pipelines
+
+**Time: 30 minutes**
+**Goal: Build a Retrieval-Augmented Generation pipeline**
+
+### Step 1: Create RAG Pipeline
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+
+    "github.com/Ranganaths/minion/embeddings"
+    "github.com/Ranganaths/minion/llm"
+    "github.com/Ranganaths/minion/rag"
+    "github.com/Ranganaths/minion/vectorstore"
+)
+
+func main() {
+    ctx := context.Background()
+
+    // Create components
+    embedder := embeddings.NewOpenAIEmbedder("your-api-key")
+    llmProvider := llm.NewOpenAI("your-api-key")
+    vectorStore, _ := vectorstore.NewMemoryVectorStore(vectorstore.MemoryVectorStoreConfig{
+        Embedder: embedder,
+    })
+
+    // Create RAG pipeline
+    pipeline, _ := rag.NewPipeline(rag.PipelineConfig{
+        Embedder:      embedder,
+        VectorStore:   vectorStore,
+        LLM:           llmProvider,
+        RetrieverK:    4,
+        ReturnSources: true,
+    })
+
+    // Add documents to knowledge base
+    documents := []vectorstore.Document{
+        vectorstore.NewDocumentWithMetadata(
+            "Minion is a multi-agent AI framework written in Go.",
+            map[string]any{"source": "docs", "category": "overview"},
+        ),
+        vectorstore.NewDocumentWithMetadata(
+            "The framework supports multiple LLM providers including OpenAI, Anthropic, and TupleLeap.",
+            map[string]any{"source": "docs", "category": "providers"},
+        ),
+        vectorstore.NewDocumentWithMetadata(
+            "Multi-agent coordination uses the KQML protocol for inter-agent communication.",
+            map[string]any{"source": "docs", "category": "multiagent"},
+        ),
+    }
+
+    pipeline.AddDocuments(ctx, documents)
+    fmt.Printf("Added %d documents to knowledge base\n", len(documents))
+
+    // Query with RAG
+    answer, sources, _ := pipeline.QueryWithSources(ctx, "What LLM providers does Minion support?")
+
+    fmt.Printf("\nQuestion: What LLM providers does Minion support?\n")
+    fmt.Printf("Answer: %s\n", answer)
+    fmt.Printf("\nSources:\n")
+    for i, source := range sources {
+        fmt.Printf("  %d. %s\n", i+1, source.PageContent[:min(50, len(source.PageContent))]+"...")
+    }
+}
+```
+
+### Step 2: RAG Worker in Multi-Agent System
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+
+    "github.com/Ranganaths/minion/core/multiagent"
+    "github.com/Ranganaths/minion/embeddings"
+    "github.com/Ranganaths/minion/integration"
+    "github.com/Ranganaths/minion/llm"
+    "github.com/Ranganaths/minion/vectorstore"
+)
+
+func main() {
+    ctx := context.Background()
+
+    // Setup components
+    embedder := embeddings.NewOpenAIEmbedder("your-api-key")
+    llmProvider := llm.NewOpenAI("your-api-key")
+    vectorStore, _ := vectorstore.NewMemoryVectorStore(vectorstore.MemoryVectorStoreConfig{
+        Embedder: embedder,
+    })
+
+    // Create RAG worker
+    ragWorker, _ := integration.NewRAGWorker(integration.RAGWorkerConfig{
+        Embedder:    embedder,
+        LLM:         llmProvider,
+        VectorStore: vectorStore,
+        Name:        "knowledge-worker",
+        RetrieverK:  4,
+    })
+
+    // Create coordinator
+    protocol := multiagent.NewInMemoryProtocol(nil)
+    ledger := multiagent.NewInMemoryLedger()
+    orchestrator := multiagent.NewOrchestratorAgent("orchestrator", protocol, ledger)
+
+    // Register RAG worker
+    orchestrator.RegisterCustomWorker(ragWorker)
+    orchestrator.Start(ctx)
+
+    // Execute knowledge retrieval task
+    task := &multiagent.Task{
+        ID:          "rag-task-1",
+        Name:        "Knowledge Query",
+        Description: "What are the main features of Minion?",
+        Type:        "rag",
+        Input: map[string]interface{}{
+            "query": "What are the main features of Minion?",
+        },
+    }
+
+    result, _ := orchestrator.ExecuteTask(ctx, task)
+    fmt.Printf("RAG Result: %v\n", result)
+}
+```
+
+### What You Learned
+- ✅ How to create RAG pipelines
+- ✅ How to add documents to knowledge base
+- ✅ How to integrate RAG with multi-agent system
+- ✅ Source attribution in RAG responses
+
+---
+
+## Tutorial 18: LangChain-Style Chains
+
+**Time: 30 minutes**
+**Goal: Build processing chains for complex workflows**
+
+### Step 1: Create LLM Chain
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+
+    "github.com/Ranganaths/minion/chain"
+    "github.com/Ranganaths/minion/llm"
+)
+
+func main() {
+    ctx := context.Background()
+
+    llmProvider := llm.NewOpenAI("your-api-key")
+
+    // Create a simple LLM chain
+    summarizer, _ := chain.NewLLMChain(chain.LLMChainConfig{
+        LLM: llmProvider,
+        PromptTemplate: `Summarize the following text in 3 bullet points:
+
+{{.input}}
+
+Summary:`,
+    })
+
+    // Execute chain
+    result, _ := summarizer.Call(ctx, map[string]any{
+        "input": "The Minion framework is a production-ready multi-agent system written in Go. It supports multiple LLM providers, has built-in persistence with PostgreSQL, and includes features like auto-scaling workers, load balancing, and resilience patterns.",
+    })
+
+    fmt.Printf("Summary:\n%v\n", result["output"])
+}
+```
+
+### Step 2: Create Sequential Chain
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+
+    "github.com/Ranganaths/minion/chain"
+    "github.com/Ranganaths/minion/llm"
+)
+
+func main() {
+    ctx := context.Background()
+
+    llmProvider := llm.NewOpenAI("your-api-key")
+
+    // Step 1: Extract key points
+    extractor, _ := chain.NewLLMChain(chain.LLMChainConfig{
+        LLM: llmProvider,
+        PromptTemplate: `Extract 3 key points from this text:
+{{.input}}
+
+Key Points:`,
+        OutputKey: "key_points",
+    })
+
+    // Step 2: Generate questions from key points
+    questionGen, _ := chain.NewLLMChain(chain.LLMChainConfig{
+        LLM: llmProvider,
+        PromptTemplate: `Based on these key points, generate 3 discussion questions:
+{{.key_points}}
+
+Questions:`,
+        OutputKey: "questions",
+    })
+
+    // Step 3: Create study guide
+    guideGen, _ := chain.NewLLMChain(chain.LLMChainConfig{
+        LLM: llmProvider,
+        PromptTemplate: `Create a brief study guide using these questions:
+{{.questions}}
+
+Study Guide:`,
+        OutputKey: "study_guide",
+    })
+
+    // Create sequential chain
+    pipeline, _ := chain.NewSequentialChain(chain.SequentialChainConfig{
+        Chains:     []chain.Chain{extractor, questionGen, guideGen},
+        InputKeys:  []string{"input"},
+        OutputKeys: []string{"key_points", "questions", "study_guide"},
+    })
+
+    // Execute full pipeline
+    result, _ := pipeline.Call(ctx, map[string]any{
+        "input": "Multi-agent systems coordinate multiple AI agents to solve complex tasks. Each agent has specialized capabilities and they communicate through protocols like KQML. Orchestrators manage task distribution while workers execute specific operations.",
+    })
+
+    fmt.Println("=== Key Points ===")
+    fmt.Println(result["key_points"])
+    fmt.Println("\n=== Questions ===")
+    fmt.Println(result["questions"])
+    fmt.Println("\n=== Study Guide ===")
+    fmt.Println(result["study_guide"])
+}
+```
+
+### Step 3: RAG Chain
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+
+    "github.com/Ranganaths/minion/chain"
+    "github.com/Ranganaths/minion/embeddings"
+    "github.com/Ranganaths/minion/llm"
+    "github.com/Ranganaths/minion/retriever"
+    "github.com/Ranganaths/minion/vectorstore"
+)
+
+func main() {
+    ctx := context.Background()
+
+    // Setup components
+    embedder := embeddings.NewOpenAIEmbedder("your-api-key")
+    llmProvider := llm.NewOpenAI("your-api-key")
+    vs, _ := vectorstore.NewMemoryVectorStore(vectorstore.MemoryVectorStoreConfig{
+        Embedder: embedder,
+    })
+
+    // Add documents
+    vs.AddDocuments(ctx, []vectorstore.Document{
+        vectorstore.NewDocument("Minion supports OpenAI, Anthropic, TupleLeap, and Ollama providers."),
+        vectorstore.NewDocument("The framework uses KQML protocol for multi-agent communication."),
+        vectorstore.NewDocument("PostgreSQL is used for persistent task storage."),
+    })
+
+    // Create retriever
+    ret, _ := retriever.NewVectorStoreRetriever(retriever.VectorStoreRetrieverConfig{
+        VectorStore: vs,
+        K:           2,
+    })
+
+    // Create RAG chain
+    ragChain, _ := chain.NewRAGChain(chain.RAGChainConfig{
+        LLM:       llmProvider,
+        Retriever: ret,
+        PromptTemplate: `Use the following context to answer the question.
+
+Context:
+{{.context}}
+
+Question: {{.question}}
+
+Answer:`,
+    })
+
+    // Query
+    result, _ := ragChain.Call(ctx, map[string]any{
+        "question": "What LLM providers are supported?",
+    })
+
+    fmt.Printf("Answer: %v\n", result["output"])
+}
+```
+
+### What You Learned
+- ✅ How to create LLM chains
+- ✅ How to build sequential processing pipelines
+- ✅ How to create RAG chains
+- ✅ Chain composition patterns
+
+---
+
+## Tutorial 19: MCP Tool Integration
+
+**Time: 25 minutes**
+**Goal: Integrate external tools via Model Context Protocol**
+
+### Step 1: Connect to MCP Server
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+
+    "github.com/Ranganaths/minion/mcp/client"
+)
+
+func main() {
+    ctx := context.Background()
+
+    // Create MCP client for stdio transport
+    mcpClient, err := client.NewClient(client.ClientConfig{
+        Transport:  "stdio",
+        Command:    "npx",
+        Args:       []string{"-y", "@modelcontextprotocol/server-filesystem"},
+        WorkingDir: "/tmp",
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer mcpClient.Close()
+
+    // Connect to server
+    if err := mcpClient.Connect(ctx); err != nil {
+        log.Fatal(err)
+    }
+    fmt.Println("Connected to MCP server")
+
+    // List available tools
+    tools, err := mcpClient.ListTools(ctx)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    fmt.Println("Available tools:")
+    for _, tool := range tools {
+        fmt.Printf("  - %s: %s\n", tool.Name, tool.Description)
+    }
+
+    // Execute a tool
+    result, err := mcpClient.CallTool(ctx, "read_file", map[string]interface{}{
+        "path": "/etc/hostname",
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    fmt.Printf("\nTool result: %v\n", result)
+}
+```
+
+### Step 2: HTTP Transport with Authentication
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+
+    "github.com/Ranganaths/minion/mcp/client"
+)
+
+func main() {
+    ctx := context.Background()
+
+    // Create MCP client with HTTP transport and auth
+    mcpClient, err := client.NewClient(client.ClientConfig{
+        Transport: "http",
+        BaseURL:   "https://mcp-server.example.com",
+        Auth: &client.AuthConfig{
+            Type:   "bearer",
+            Token:  "your-api-token",
+        },
+        Headers: map[string]string{
+            "X-Custom-Header": "value",
+        },
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer mcpClient.Close()
+
+    if err := mcpClient.Connect(ctx); err != nil {
+        log.Fatal(err)
+    }
+
+    // List and call tools
+    tools, _ := mcpClient.ListTools(ctx)
+    for _, tool := range tools {
+        fmt.Printf("Tool: %s\n", tool.Name)
+    }
+}
+```
+
+### Step 3: Register MCP Tools with Framework
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+
+    "github.com/Ranganaths/minion/core"
+    "github.com/Ranganaths/minion/mcp/client"
+    "github.com/Ranganaths/minion/storage"
+)
+
+func main() {
+    ctx := context.Background()
+
+    // Initialize framework
+    framework := core.NewFramework(
+        core.WithStorage(storage.NewInMemory()),
+    )
+    defer framework.Close()
+
+    // Create MCP client
+    mcpClient, _ := client.NewClient(client.ClientConfig{
+        Transport: "stdio",
+        Command:   "npx",
+        Args:      []string{"-y", "@modelcontextprotocol/server-brave-search"},
+        Env: map[string]string{
+            "BRAVE_API_KEY": "your-brave-api-key",
+        },
+    })
+
+    mcpClient.Connect(ctx)
+    defer mcpClient.Close()
+
+    // Get tools and register with framework
+    tools, _ := mcpClient.ListTools(ctx)
+    for _, tool := range tools {
+        // Create wrapper tool
+        wrapper := NewMCPToolWrapper(mcpClient, tool)
+        framework.RegisterTool(wrapper)
+        fmt.Printf("Registered MCP tool: %s\n", tool.Name)
+    }
+
+    fmt.Println("MCP tools integrated with framework")
+}
+
+// MCPToolWrapper wraps MCP tools for framework integration
+type MCPToolWrapper struct {
+    client *client.Client
+    tool   *client.MCPTool
+}
+
+func NewMCPToolWrapper(c *client.Client, t *client.MCPTool) *MCPToolWrapper {
+    return &MCPToolWrapper{client: c, tool: t}
+}
+
+func (w *MCPToolWrapper) Name() string {
+    return "mcp_" + w.tool.Name
+}
+
+func (w *MCPToolWrapper) Description() string {
+    return w.tool.Description
+}
+
+func (w *MCPToolWrapper) Execute(ctx context.Context, input *models.ToolInput) (*models.ToolOutput, error) {
+    result, err := w.client.CallTool(ctx, w.tool.Name, input.Params)
+    if err != nil {
+        return &models.ToolOutput{
+            ToolName: w.Name(),
+            Success:  false,
+            Error:    err,
+        }, nil
+    }
+    return &models.ToolOutput{
+        ToolName: w.Name(),
+        Success:  true,
+        Result:   result,
+    }, nil
+}
+
+func (w *MCPToolWrapper) CanExecute(agent *models.Agent) bool {
+    return true
+}
+```
+
+### What You Learned
+- ✅ How to connect to MCP servers
+- ✅ Stdio and HTTP transports
+- ✅ Authentication options (Bearer, API Key, OAuth)
+- ✅ Integrating MCP tools with the framework
 
 ---
 
