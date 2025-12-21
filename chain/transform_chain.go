@@ -94,32 +94,47 @@ func (c *TransformChain) Call(ctx context.Context, inputs map[string]any) (map[s
 	return outputs, nil
 }
 
-// Stream executes and streams results
+// Stream executes and streams results.
+// The returned channel is closed when streaming completes or context is cancelled.
 func (c *TransformChain) Stream(ctx context.Context, inputs map[string]any) (<-chan StreamEvent, error) {
 	ch := make(chan StreamEvent, 10)
 
 	go func() {
 		defer close(ch)
 
-		ch <- MakeStreamEvent(StreamEventStart, "", map[string]any{"chain": c.Name()}, nil)
+		// Helper to send with context check
+		send := func(event StreamEvent) bool {
+			select {
+			case <-ctx.Done():
+				return false
+			case ch <- event:
+				return true
+			}
+		}
+
+		if !send(MakeStreamEvent(StreamEventStart, "", map[string]any{"chain": c.Name()}, nil)) {
+			return
+		}
 
 		// Transform inputs
 		transformed, err := c.transformFunc(inputs)
 		if err != nil {
-			ch <- MakeStreamEvent(StreamEventError, "", nil, fmt.Errorf("transform error: %w", err))
+			send(MakeStreamEvent(StreamEventError, "", nil, fmt.Errorf("transform error: %w", err)))
 			return
 		}
 
 		// Stream from inner chain
 		streamCh, err := c.innerChain.Stream(ctx, transformed)
 		if err != nil {
-			ch <- MakeStreamEvent(StreamEventError, "", nil, err)
+			send(MakeStreamEvent(StreamEventError, "", nil, err))
 			return
 		}
 
-		// Forward all events
+		// Forward all events with context check
 		for event := range streamCh {
-			ch <- event
+			if !send(event) {
+				return
+			}
 		}
 	}()
 
@@ -202,22 +217,35 @@ func (c *FuncChain) Call(ctx context.Context, inputs map[string]any) (map[string
 	return outputs, nil
 }
 
-// Stream executes and streams results
+// Stream executes and streams results.
+// The returned channel is closed when streaming completes or context is cancelled.
 func (c *FuncChain) Stream(ctx context.Context, inputs map[string]any) (<-chan StreamEvent, error) {
 	ch := make(chan StreamEvent, 10)
 
 	go func() {
 		defer close(ch)
 
-		ch <- MakeStreamEvent(StreamEventStart, "", map[string]any{"chain": c.Name()}, nil)
+		// Helper to send with context check
+		send := func(event StreamEvent) bool {
+			select {
+			case <-ctx.Done():
+				return false
+			case ch <- event:
+				return true
+			}
+		}
 
-		result, err := c.Call(ctx, inputs)
-		if err != nil {
-			ch <- MakeStreamEvent(StreamEventError, "", nil, err)
+		if !send(MakeStreamEvent(StreamEventStart, "", map[string]any{"chain": c.Name()}, nil)) {
 			return
 		}
 
-		ch <- MakeStreamEvent(StreamEventComplete, "", result, nil)
+		result, err := c.Call(ctx, inputs)
+		if err != nil {
+			send(MakeStreamEvent(StreamEventError, "", nil, err))
+			return
+		}
+
+		send(MakeStreamEvent(StreamEventComplete, "", result, nil))
 	}()
 
 	return ch, nil
@@ -262,20 +290,31 @@ func (c *PassthroughChain) Call(ctx context.Context, inputs map[string]any) (map
 	return outputs, nil
 }
 
-// Stream executes and streams results
+// Stream executes and streams results.
+// The returned channel is closed when streaming completes or context is cancelled.
 func (c *PassthroughChain) Stream(ctx context.Context, inputs map[string]any) (<-chan StreamEvent, error) {
 	ch := make(chan StreamEvent, 10)
 
 	go func() {
 		defer close(ch)
 
+		// Helper to send with context check
+		send := func(event StreamEvent) bool {
+			select {
+			case <-ctx.Done():
+				return false
+			case ch <- event:
+				return true
+			}
+		}
+
 		result, err := c.Call(ctx, inputs)
 		if err != nil {
-			ch <- MakeStreamEvent(StreamEventError, "", nil, err)
+			send(MakeStreamEvent(StreamEventError, "", nil, err))
 			return
 		}
 
-		ch <- MakeStreamEvent(StreamEventComplete, "", result, nil)
+		send(MakeStreamEvent(StreamEventComplete, "", result, nil))
 	}()
 
 	return ch, nil

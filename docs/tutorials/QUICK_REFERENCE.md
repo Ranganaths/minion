@@ -6,6 +6,9 @@
 
 - [Framework Setup](#framework-setup)
 - [Agent Creation](#agent-creation)
+- [LLM Request Validation](#llm-request-validation)
+- [Chain Package Helpers](#chain-package-helpers)
+- [Configuration](#configuration)
 - [MCP Connections](#mcp-connections)
 - [Tool Execution](#tool-execution)
 - [Capabilities](#capabilities)
@@ -65,6 +68,165 @@ Capabilities: []string{
 
 ```go
 Capabilities: []string{"*"}  // Caution: Use sparingly!
+```
+
+---
+
+## LLM Request Validation
+
+### Validate Completion Request
+
+```go
+import "github.com/Ranganaths/minion/llm"
+
+req := &llm.CompletionRequest{
+    Model:       "gpt-4",
+    UserPrompt:  "Hello!",
+    Temperature: 0.7,
+    MaxTokens:   100,
+}
+
+// Validate before sending
+if err := req.Validate(); err != nil {
+    log.Fatalf("Invalid request: %v", err)
+}
+```
+
+### Validate Chat Request
+
+```go
+chatReq := &llm.ChatRequest{
+    Model: "gpt-4",
+    Messages: []llm.Message{
+        {Role: "system", Content: "You are helpful."},
+        {Role: "user", Content: "Hello!"},
+    },
+}
+
+if err := chatReq.Validate(); err != nil {
+    log.Fatalf("Invalid request: %v", err)
+}
+```
+
+### Apply Defaults
+
+```go
+// Returns new request with defaults applied
+req := &llm.CompletionRequest{UserPrompt: "Hello!"}
+normalized := req.WithDefaults("gpt-4", 1000) // defaultModel, defaultMaxTokens
+
+// Validate and apply defaults in one step
+validReq, err := llm.ValidateCompletionRequest(req, "gpt-4", 1000)
+```
+
+### Provider Health Check
+
+```go
+if healthProvider, ok := provider.(llm.HealthCheckProvider); ok {
+    if err := healthProvider.HealthCheck(ctx); err != nil {
+        log.Printf("Provider unhealthy: %v", err)
+    }
+}
+```
+
+---
+
+## Chain Package Helpers
+
+### Safe Type Assertions
+
+```go
+import "github.com/Ranganaths/minion/chain"
+
+baseChain := chain.NewBaseChain("my_chain")
+inputs := map[string]any{"count": 42, "rate": 3.14, "enabled": true}
+
+// With error handling
+count, err := baseChain.GetInt(inputs, "count")
+rate, err := baseChain.GetFloat(inputs, "rate")
+enabled, err := baseChain.GetBool(inputs, "enabled")
+tags, err := baseChain.GetStringSlice(inputs, "tags")
+meta, err := baseChain.GetMap(inputs, "metadata")
+
+// With defaults (never fails)
+count := baseChain.GetIntOr(inputs, "count", 10)
+rate := baseChain.GetFloatOr(inputs, "rate", 1.0)
+enabled := baseChain.GetBoolOr(inputs, "enabled", false)
+```
+
+### String Conversion Helpers
+
+```go
+str := chain.AsString(anyValue)        // Safe to string
+slice := chain.AsStringSlice(anyValue) // Safe to []string
+```
+
+### Context-Aware Streaming
+
+```go
+ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+defer cancel()
+
+streamCh, err := myChain.Stream(ctx, inputs)
+if err != nil {
+    log.Fatal(err)
+}
+
+for event := range streamCh {
+    switch event.Type {
+    case chain.StreamEventStart:
+        // Started
+    case chain.StreamEventChunk:
+        fmt.Print(event.Content)
+    case chain.StreamEventComplete:
+        // Done with event.Data
+    case chain.StreamEventError:
+        log.Printf("Error: %v", event.Error)
+    }
+}
+// Channel closes automatically, goroutine cleaned up
+```
+
+---
+
+## Configuration
+
+### Safe Environment Variables
+
+```go
+import "github.com/Ranganaths/minion/config"
+
+env := config.NewEnv("MYAPP") // Prefix: MYAPP_
+
+// With defaults
+apiKey := env.GetString("API_KEY", "default")
+maxRetries := env.GetInt("MAX_RETRIES", 3)
+timeout := env.GetDuration("TIMEOUT", 30*time.Second)
+debug := env.GetBool("DEBUG", false)
+tags := env.GetStringSlice("TAGS", []string{})
+```
+
+### Required Values (No Panics!)
+
+```go
+// Returns error instead of panicking
+apiKey, err := env.RequireString("API_KEY")
+maxTokens, err := env.RequireInt("MAX_TOKENS")
+debug, err := env.RequireBool("DEBUG")
+temperature, err := env.RequireFloat64("TEMPERATURE")
+timeout, err := env.RequireDuration("TIMEOUT")
+
+if err != nil {
+    log.Fatalf("Configuration error: %v", err)
+}
+```
+
+### Check If Set
+
+```go
+if env.IsSet("DEBUG") {
+    // Variable exists (even if empty)
+}
 ```
 
 ---

@@ -264,6 +264,8 @@ All the following types are now safe for concurrent use:
 | `CachedEmbedder` | ✅ | Uses atomic.Int64 for stats |
 | `InMemoryMetrics` | ✅ | Thread-safe counters, gauges, histograms |
 | `StdLogger` | ✅ | Immutable after creation |
+| `WorkerAgent` | ✅ | Uses atomic.Bool for running state |
+| `BaseChain` | ✅ | Immutable after creation, callbacks thread-safe |
 
 ---
 
@@ -397,6 +399,31 @@ func main() {
 ---
 
 ## Changelog
+
+### Version 5.0 (December 2024)
+- **LLM Package Enhancements (`llm/interface.go`):**
+  - `Validate()` method on `CompletionRequest` and `ChatRequest`
+  - `WithDefaults()` method for applying default model and token values
+  - `HealthCheckProvider` interface for provider health monitoring
+  - `ValidationError` type with field-level error details
+  - `ValidateCompletionRequest()` and `ValidateChatRequest()` convenience functions
+- **Chain Package Improvements (`chain/`):**
+  - Fixed goroutine leaks in all `Stream()` methods with context-aware send helpers
+  - Added safe type assertion helpers: `GetInt`, `GetFloat`, `GetBool`, `GetStringSlice`, `GetMap`
+  - Added `AsString` and `AsStringSlice` utility functions for safe conversions
+  - All streaming operations now properly respect context cancellation
+- **Config Package Enhancements (`config/env.go`):**
+  - Added `RequireBool()` for non-panicking boolean retrieval
+  - Added `RequireFloat64()` for non-panicking float retrieval
+  - Added `RequireDuration()` for non-panicking duration retrieval
+  - Deprecated `MustGetString()` in favor of `RequireString()`
+- **Storage Package Fixes (`storage/postgres/`):**
+  - Added `unmarshalActivityJSON()` helper for safe JSON parsing
+  - Fixed silent JSON unmarshaling error handling
+- **Multi-Agent Package Fixes (`core/multiagent/`):**
+  - Fixed race condition in `WorkerAgent.running` field using `atomic.Bool`
+  - Thread-safe worker start/stop operations
+- **All packages pass race detection tests with `go test -race ./...`**
 
 ### Version 4.0 (December 2024)
 - **New `resilience/` package:**

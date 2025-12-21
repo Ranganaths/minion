@@ -171,3 +171,152 @@ func MergeInputs(maps ...map[string]any) map[string]any {
 	}
 	return result
 }
+
+// --- Safe Type Assertion Helpers ---
+// These functions provide safe type assertions with proper error handling
+// to avoid runtime panics from type assertion failures.
+
+// GetInt extracts an int value from inputs with safe type assertion
+func (bc *BaseChain) GetInt(inputs map[string]any, key string) (int, error) {
+	val, ok := inputs[key]
+	if !ok {
+		return 0, fmt.Errorf("missing input: %s", key)
+	}
+	switch v := val.(type) {
+	case int:
+		return v, nil
+	case int64:
+		return int(v), nil
+	case float64:
+		return int(v), nil
+	default:
+		return 0, fmt.Errorf("input %s is not a number: %T", key, val)
+	}
+}
+
+// GetIntOr extracts an int value from inputs or returns a default
+func (bc *BaseChain) GetIntOr(inputs map[string]any, key string, defaultVal int) int {
+	val, err := bc.GetInt(inputs, key)
+	if err != nil {
+		return defaultVal
+	}
+	return val
+}
+
+// GetFloat extracts a float64 value from inputs with safe type assertion
+func (bc *BaseChain) GetFloat(inputs map[string]any, key string) (float64, error) {
+	val, ok := inputs[key]
+	if !ok {
+		return 0, fmt.Errorf("missing input: %s", key)
+	}
+	switch v := val.(type) {
+	case float64:
+		return v, nil
+	case float32:
+		return float64(v), nil
+	case int:
+		return float64(v), nil
+	case int64:
+		return float64(v), nil
+	default:
+		return 0, fmt.Errorf("input %s is not a number: %T", key, val)
+	}
+}
+
+// GetFloatOr extracts a float64 value from inputs or returns a default
+func (bc *BaseChain) GetFloatOr(inputs map[string]any, key string, defaultVal float64) float64 {
+	val, err := bc.GetFloat(inputs, key)
+	if err != nil {
+		return defaultVal
+	}
+	return val
+}
+
+// GetBool extracts a bool value from inputs with safe type assertion
+func (bc *BaseChain) GetBool(inputs map[string]any, key string) (bool, error) {
+	val, ok := inputs[key]
+	if !ok {
+		return false, fmt.Errorf("missing input: %s", key)
+	}
+	b, ok := val.(bool)
+	if !ok {
+		return false, fmt.Errorf("input %s is not a bool: %T", key, val)
+	}
+	return b, nil
+}
+
+// GetBoolOr extracts a bool value from inputs or returns a default
+func (bc *BaseChain) GetBoolOr(inputs map[string]any, key string, defaultVal bool) bool {
+	val, err := bc.GetBool(inputs, key)
+	if err != nil {
+		return defaultVal
+	}
+	return val
+}
+
+// GetStringSlice extracts a string slice from inputs with safe type assertion
+func (bc *BaseChain) GetStringSlice(inputs map[string]any, key string) ([]string, error) {
+	val, ok := inputs[key]
+	if !ok {
+		return nil, fmt.Errorf("missing input: %s", key)
+	}
+	switch v := val.(type) {
+	case []string:
+		return v, nil
+	case []interface{}:
+		result := make([]string, 0, len(v))
+		for i, item := range v {
+			str, ok := item.(string)
+			if !ok {
+				return nil, fmt.Errorf("input %s[%d] is not a string: %T", key, i, item)
+			}
+			result = append(result, str)
+		}
+		return result, nil
+	default:
+		return nil, fmt.Errorf("input %s is not a string slice: %T", key, val)
+	}
+}
+
+// GetMap extracts a map from inputs with safe type assertion
+func (bc *BaseChain) GetMap(inputs map[string]any, key string) (map[string]any, error) {
+	val, ok := inputs[key]
+	if !ok {
+		return nil, fmt.Errorf("missing input: %s", key)
+	}
+	// map[string]any and map[string]interface{} are the same type
+	if m, ok := val.(map[string]any); ok {
+		return m, nil
+	}
+	return nil, fmt.Errorf("input %s is not a map: %T", key, val)
+}
+
+// AsString safely converts any value to string representation
+func AsString(val any) string {
+	if val == nil {
+		return ""
+	}
+	if s, ok := val.(string); ok {
+		return s
+	}
+	return fmt.Sprintf("%v", val)
+}
+
+// AsStringSlice safely converts any value to string slice
+func AsStringSlice(val any) []string {
+	if val == nil {
+		return nil
+	}
+	switch v := val.(type) {
+	case []string:
+		return v
+	case []interface{}:
+		result := make([]string, 0, len(v))
+		for _, item := range v {
+			result = append(result, AsString(item))
+		}
+		return result
+	default:
+		return []string{AsString(val)}
+	}
+}

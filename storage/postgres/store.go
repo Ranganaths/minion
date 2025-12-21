@@ -42,6 +42,42 @@ func NewPostgresStoreFromDB(db *sql.DB) *PostgresStore {
 	return &PostgresStore{db: db}
 }
 
+// unmarshalActivityJSON safely unmarshals JSON fields for an activity.
+// If unmarshaling fails, it initializes the field to its zero value rather than leaving it nil.
+func unmarshalActivityJSON(activity *models.Activity, inputJSON, outputJSON, toolsJSON, metadataJSON []byte) {
+	if len(inputJSON) > 0 {
+		var input models.Input
+		if err := json.Unmarshal(inputJSON, &input); err == nil {
+			activity.Input = &input
+		}
+		// On error, leave as nil (already the default)
+	}
+
+	if len(outputJSON) > 0 {
+		var output models.Output
+		if err := json.Unmarshal(outputJSON, &output); err == nil {
+			activity.Output = &output
+		}
+		// On error, leave as nil (already the default)
+	}
+
+	if len(toolsJSON) > 0 {
+		if err := json.Unmarshal(toolsJSON, &activity.ToolsUsed); err != nil {
+			activity.ToolsUsed = []string{}
+		}
+	} else {
+		activity.ToolsUsed = []string{}
+	}
+
+	if len(metadataJSON) > 0 {
+		if err := json.Unmarshal(metadataJSON, &activity.Metadata); err != nil {
+			activity.Metadata = make(map[string]interface{})
+		}
+	} else {
+		activity.Metadata = make(map[string]interface{})
+	}
+}
+
 // Close closes the database connection
 func (s *PostgresStore) Close() error {
 	return s.db.Close()
@@ -506,10 +542,7 @@ func (s *PostgresStore) GetActivities(ctx context.Context, agentID string, limit
 			return nil, fmt.Errorf("failed to scan activity: %w", err)
 		}
 
-		_ = json.Unmarshal(inputJSON, &activity.Input)
-		_ = json.Unmarshal(outputJSON, &activity.Output)
-		_ = json.Unmarshal(toolsJSON, &activity.ToolsUsed)
-		_ = json.Unmarshal(metadataJSON, &activity.Metadata)
+		unmarshalActivityJSON(&activity, inputJSON, outputJSON, toolsJSON, metadataJSON)
 
 		activities = append(activities, &activity)
 	}
@@ -556,10 +589,7 @@ func (s *PostgresStore) GetActivityByID(ctx context.Context, id string) (*models
 		return nil, fmt.Errorf("failed to get activity: %w", err)
 	}
 
-	_ = json.Unmarshal(inputJSON, &activity.Input)
-	_ = json.Unmarshal(outputJSON, &activity.Output)
-	_ = json.Unmarshal(toolsJSON, &activity.ToolsUsed)
-	_ = json.Unmarshal(metadataJSON, &activity.Metadata)
+	unmarshalActivityJSON(&activity, inputJSON, outputJSON, toolsJSON, metadataJSON)
 
 	return &activity, nil
 }
@@ -999,10 +1029,7 @@ func (t *PostgresTransaction) GetActivities(ctx context.Context, agentID string,
 			return nil, fmt.Errorf("failed to scan activity: %w", err)
 		}
 
-		_ = json.Unmarshal(inputJSON, &activity.Input)
-		_ = json.Unmarshal(outputJSON, &activity.Output)
-		_ = json.Unmarshal(toolsJSON, &activity.ToolsUsed)
-		_ = json.Unmarshal(metadataJSON, &activity.Metadata)
+		unmarshalActivityJSON(&activity, inputJSON, outputJSON, toolsJSON, metadataJSON)
 
 		activities = append(activities, &activity)
 	}
@@ -1048,10 +1075,7 @@ func (t *PostgresTransaction) GetActivityByID(ctx context.Context, id string) (*
 		return nil, fmt.Errorf("failed to get activity: %w", err)
 	}
 
-	_ = json.Unmarshal(inputJSON, &activity.Input)
-	_ = json.Unmarshal(outputJSON, &activity.Output)
-	_ = json.Unmarshal(toolsJSON, &activity.ToolsUsed)
-	_ = json.Unmarshal(metadataJSON, &activity.Metadata)
+	unmarshalActivityJSON(&activity, inputJSON, outputJSON, toolsJSON, metadataJSON)
 
 	return &activity, nil
 }

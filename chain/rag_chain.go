@@ -204,19 +204,32 @@ func (c *RAGChain) Call(ctx context.Context, inputs map[string]any) (map[string]
 	return outputs, nil
 }
 
-// Stream executes the RAG chain with streaming
+// Stream executes the RAG chain with streaming.
+// The returned channel is closed when streaming completes or context is cancelled.
 func (c *RAGChain) Stream(ctx context.Context, inputs map[string]any) (<-chan StreamEvent, error) {
 	ch := make(chan StreamEvent, 10)
 
 	go func() {
 		defer close(ch)
 
-		ch <- MakeStreamEvent(StreamEventStart, "", map[string]any{"chain": c.Name()}, nil)
+		// Helper to send with context check
+		send := func(event StreamEvent) bool {
+			select {
+			case <-ctx.Done():
+				return false
+			case ch <- event:
+				return true
+			}
+		}
+
+		if !send(MakeStreamEvent(StreamEventStart, "", map[string]any{"chain": c.Name()}, nil)) {
+			return
+		}
 
 		// Get query from inputs
 		query, err := c.GetString(inputs, c.inputKey)
 		if err != nil {
-			ch <- MakeStreamEvent(StreamEventError, "", nil, err)
+			send(MakeStreamEvent(StreamEventError, "", nil, err))
 			return
 		}
 
@@ -235,15 +248,17 @@ func (c *RAGChain) Stream(ctx context.Context, inputs map[string]any) (<-chan St
 		if contextStr == "" {
 			docs, err = c.retriever.GetRelevantDocuments(ctx, query)
 			if err != nil {
-				ch <- MakeStreamEvent(StreamEventError, "", nil, fmt.Errorf("retrieval error: %w", err))
+				send(MakeStreamEvent(StreamEventError, "", nil, fmt.Errorf("retrieval error: %w", err)))
 				return
 			}
 
 			// Emit retrieval event
-			ch <- MakeStreamEvent(StreamEventRetrieval, "", map[string]any{
+			if !send(MakeStreamEvent(StreamEventRetrieval, "", map[string]any{
 				"documents": docs,
 				"count":     len(docs),
-			}, nil)
+			}, nil)) {
+				return
+			}
 
 			contextStr = c.combineFunc(docs)
 		}
@@ -251,7 +266,7 @@ func (c *RAGChain) Stream(ctx context.Context, inputs map[string]any) (<-chan St
 		// Format prompt
 		prompt, err := c.promptFunc(query, contextStr)
 		if err != nil {
-			ch <- MakeStreamEvent(StreamEventError, "", nil, fmt.Errorf("prompt error: %w", err))
+			send(MakeStreamEvent(StreamEventError, "", nil, fmt.Errorf("prompt error: %w", err)))
 			return
 		}
 
@@ -263,7 +278,7 @@ func (c *RAGChain) Stream(ctx context.Context, inputs map[string]any) (<-chan St
 		// Call LLM
 		resp, err := c.llmProvider.GenerateCompletion(ctx, req)
 		if err != nil {
-			ch <- MakeStreamEvent(StreamEventError, "", nil, fmt.Errorf("LLM error: %w", err))
+			send(MakeStreamEvent(StreamEventError, "", nil, fmt.Errorf("LLM error: %w", err)))
 			return
 		}
 
@@ -276,7 +291,7 @@ func (c *RAGChain) Stream(ctx context.Context, inputs map[string]any) (<-chan St
 			outputs["source_documents"] = docs
 		}
 
-		ch <- MakeStreamEvent(StreamEventComplete, "", outputs, nil)
+		send(MakeStreamEvent(StreamEventComplete, "", outputs, nil))
 	}()
 
 	return ch, nil

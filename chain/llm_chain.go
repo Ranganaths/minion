@@ -155,22 +155,40 @@ func (c *LLMChain) Call(ctx context.Context, inputs map[string]any) (map[string]
 	return outputs, nil
 }
 
-// Stream executes the chain and streams results
+// Stream executes the chain and streams results.
+// The returned channel is closed when streaming completes or context is cancelled.
 func (c *LLMChain) Stream(ctx context.Context, inputs map[string]any) (<-chan StreamEvent, error) {
 	ch := make(chan StreamEvent, 10)
 
 	go func() {
 		defer close(ch)
 
-		ch <- MakeStreamEvent(StreamEventStart, "", map[string]any{"chain": c.Name()}, nil)
+		// Helper to send with context check
+		send := func(event StreamEvent) bool {
+			select {
+			case <-ctx.Done():
+				return false
+			case ch <- event:
+				return true
+			}
+		}
 
-		result, err := c.Call(ctx, inputs)
-		if err != nil {
-			ch <- MakeStreamEvent(StreamEventError, "", nil, err)
+		if !send(MakeStreamEvent(StreamEventStart, "", map[string]any{"chain": c.Name()}, nil)) {
 			return
 		}
 
-		ch <- MakeStreamEvent(StreamEventComplete, "", result, nil)
+		result, err := c.Call(ctx, inputs)
+		if err != nil {
+			// Check if it's a context error
+			if ctx.Err() != nil {
+				send(MakeStreamEvent(StreamEventError, "", nil, ctx.Err()))
+				return
+			}
+			send(MakeStreamEvent(StreamEventError, "", nil, err))
+			return
+		}
+
+		send(MakeStreamEvent(StreamEventComplete, "", result, nil))
 	}()
 
 	return ch, nil

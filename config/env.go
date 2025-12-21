@@ -152,6 +152,66 @@ func (e *Env) RequireInt(name string) (int, error) {
 	return intValue, nil
 }
 
+// RequireBool returns the boolean value of the environment variable or an error.
+func (e *Env) RequireBool(name string) (bool, error) {
+	value := os.Getenv(e.key(name))
+	if value == "" {
+		return false, &EnvError{
+			Name:    e.key(name),
+			Message: "required environment variable is not set",
+		}
+	}
+	switch strings.ToLower(value) {
+	case "true", "1", "yes", "on":
+		return true, nil
+	case "false", "0", "no", "off":
+		return false, nil
+	default:
+		return false, &EnvError{
+			Name:    e.key(name),
+			Message: "invalid boolean value: " + value,
+		}
+	}
+}
+
+// RequireFloat64 returns the float64 value of the environment variable or an error.
+func (e *Env) RequireFloat64(name string) (float64, error) {
+	value := os.Getenv(e.key(name))
+	if value == "" {
+		return 0, &EnvError{
+			Name:    e.key(name),
+			Message: "required environment variable is not set",
+		}
+	}
+	floatValue, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return 0, &EnvError{
+			Name:    e.key(name),
+			Message: "invalid float value: " + value,
+		}
+	}
+	return floatValue, nil
+}
+
+// RequireDuration returns the duration value of the environment variable or an error.
+func (e *Env) RequireDuration(name string) (time.Duration, error) {
+	value := os.Getenv(e.key(name))
+	if value == "" {
+		return 0, &EnvError{
+			Name:    e.key(name),
+			Message: "required environment variable is not set",
+		}
+	}
+	duration, err := time.ParseDuration(value)
+	if err != nil {
+		return 0, &EnvError{
+			Name:    e.key(name),
+			Message: "invalid duration value: " + value,
+		}
+	}
+	return duration, nil
+}
+
 // EnvError represents an environment variable error
 type EnvError struct {
 	Name    string

@@ -1,6 +1,6 @@
 # Minion Framework - Examples
 
-This directory contains 13 comprehensive, production-ready examples demonstrating the full capabilities of the Minion agent framework.
+This directory contains 14 comprehensive, production-ready examples demonstrating the full capabilities of the Minion agent framework.
 
 ## 📚 All Examples
 
@@ -11,6 +11,7 @@ This directory contains 13 comprehensive, production-ready examples demonstratin
 | **`basic/`** | Simple agent creation and execution | Agent lifecycle, LLM integration |
 | **`with_tools/`** | Custom tools with capability filtering | Tool registration, capability-based access |
 | **`custom_behavior/`** | Specialized agent behaviors | Custom behaviors, processing pipelines |
+| **`chain-features/`** | Chain package production features | Safe type assertions, streaming, validation |
 
 ### Multi-Agent System Examples
 

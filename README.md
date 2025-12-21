@@ -47,6 +47,10 @@ Minion is a standalone framework that can be used in any Go project for building
 - ✅ **Schema Validation** - JSON Schema validation with regex pattern support
 - 🛡️ **Error Handling** - Safe environment config with error returns (no panics)
 - 📈 **Chain System** - LangChain-style chains for RAG and workflows
+- 🔄 **LLM Request Validation** - Built-in validation for temperature, tokens, and model
+- 🏥 **Health Checks** - Provider health verification with `HealthCheckProvider` interface
+- 🛡️ **Safe Type Assertions** - Helper functions to prevent runtime panics
+- ⚡ **Goroutine Safety** - Context-aware streaming with proper cleanup
 
 ## 📦 Installation
 
@@ -252,6 +256,17 @@ provider := llm.NewOpenAI(os.Getenv("OPENAI_API_KEY"))
 framework := core.NewFramework(
     core.WithLLMProvider(provider),
 )
+
+// With request validation (recommended for production)
+req := &llm.CompletionRequest{
+    Model:       "gpt-4",
+    UserPrompt:  "Hello!",
+    Temperature: 0.7,
+    MaxTokens:   100,
+}
+if err := req.Validate(); err != nil {
+    log.Fatalf("Invalid request: %v", err)
+}
 ```
 
 ### Anthropic (Claude)
@@ -277,13 +292,35 @@ framework := core.NewFramework(
 ```go
 type MyLLMProvider struct{}
 
+func (p *MyLLMProvider) Name() string {
+    return "my-provider"
+}
+
 func (p *MyLLMProvider) GenerateCompletion(ctx context.Context, req *llm.CompletionRequest) (*llm.CompletionResponse, error) {
+    // Validate request first (recommended)
+    if err := req.Validate(); err != nil {
+        return nil, err
+    }
+
     // Your implementation
     return &llm.CompletionResponse{
         Text:       response,
         TokensUsed: tokens,
         Model:      "my-model",
     }, nil
+}
+
+func (p *MyLLMProvider) GenerateChat(ctx context.Context, req *llm.ChatRequest) (*llm.ChatResponse, error) {
+    if err := req.Validate(); err != nil {
+        return nil, err
+    }
+    // Your implementation
+}
+
+// Optional: Implement HealthCheckProvider for health monitoring
+func (p *MyLLMProvider) HealthCheck(ctx context.Context) error {
+    // Check connectivity to your LLM service
+    return nil
 }
 
 framework := core.NewFramework(
@@ -453,12 +490,20 @@ result, err := coordinator.ExecuteTask(ctx, &multiagent.TaskRequest{
 - [x] **Production hardening** - Connection pooling, graceful shutdown, error handling
 
 ### In Progress
-- [ ] Streaming responses
+- [ ] Streaming responses (partial - chain streaming complete)
 - [ ] Advanced observability (distributed tracing)
 - [ ] Web UI for agent management
 - [ ] Plugin system
 - [ ] Google Gemini provider
 - [ ] Local model support (Ollama)
+
+### Recently Completed
+- [x] **LLM Request Validation** - `Validate()` and `WithDefaults()` methods
+- [x] **Health Check Interface** - `HealthCheckProvider` for provider health monitoring
+- [x] **Safe Type Assertions** - `GetInt`, `GetFloat`, `GetBool`, `GetMap` helpers
+- [x] **Goroutine Leak Prevention** - Context-aware streaming in all chains
+- [x] **Non-panicking Config** - `RequireString`, `RequireInt`, `RequireBool` methods
+- [x] **Race Condition Fixes** - Atomic operations for thread-safe worker agents
 
 ## 📄 License
 

@@ -8,11 +8,13 @@
 
 1. [Currently Supported Providers](#currently-supported-providers)
 2. [Provider Interface](#provider-interface)
-3. [Using OpenAI](#using-openai)
-4. [Adding New Providers](#adding-new-providers)
-5. [Provider Implementations](#provider-implementations)
-6. [Best Practices](#best-practices)
-7. [Roadmap](#roadmap)
+3. [Request Validation](#request-validation)
+4. [Health Checks](#health-checks)
+5. [Using OpenAI](#using-openai)
+6. [Adding New Providers](#adding-new-providers)
+7. [Provider Implementations](#provider-implementations)
+8. [Best Practices](#best-practices)
+9. [Roadmap](#roadmap)
 
 ---
 
@@ -90,6 +92,125 @@ type ChatResponse struct {
     TokensUsed    int
     FinishReason  string
     Model         string
+}
+```
+
+---
+
+## Request Validation
+
+All LLM requests can be validated before sending to prevent errors:
+
+```go
+import "github.com/Ranganaths/minion/llm"
+
+// Validate completion request
+req := &llm.CompletionRequest{
+    Model:       "gpt-4",
+    UserPrompt:  "Hello!",
+    Temperature: 0.7,
+    MaxTokens:   100,
+}
+
+if err := req.Validate(); err != nil {
+    log.Fatalf("Invalid request: %v", err)
+}
+
+// Validate chat request
+chatReq := &llm.ChatRequest{
+    Model: "gpt-4",
+    Messages: []llm.Message{
+        {Role: "system", Content: "You are helpful."},
+        {Role: "user", Content: "Hello!"},
+    },
+    Temperature: 0.7,
+}
+
+if err := chatReq.Validate(); err != nil {
+    log.Fatalf("Invalid request: %v", err)
+}
+```
+
+### Validation Rules
+
+| Field | Rule |
+|-------|------|
+| `Model` | Required, cannot be empty |
+| `Temperature` | Must be between 0 and 2.0 |
+| `MaxTokens` | Must be non-negative |
+| `UserPrompt` | At least one of UserPrompt or SystemPrompt required |
+| `Messages` | At least one message required for chat requests |
+| `Message.Role` | Must be "system", "user", or "assistant" |
+
+### Applying Defaults
+
+Use `WithDefaults()` to apply default values without modifying the original request:
+
+```go
+// Apply defaults
+req := &llm.CompletionRequest{
+    UserPrompt: "Hello!",
+}
+
+// Returns a new request with defaults applied
+normalizedReq := req.WithDefaults("gpt-4", 1000) // defaultModel, defaultMaxTokens
+
+// Convenience function: validate and apply defaults in one step
+validReq, err := llm.ValidateCompletionRequest(req, "gpt-4", 1000)
+if err != nil {
+    log.Fatalf("Invalid request: %v", err)
+}
+```
+
+---
+
+## Health Checks
+
+Providers can implement the `HealthCheckProvider` interface for health monitoring:
+
+```go
+// HealthCheckProvider extends Provider with health check capability
+type HealthCheckProvider interface {
+    Provider
+    HealthCheck(ctx context.Context) error
+}
+```
+
+### Usage
+
+```go
+provider := llm.NewOpenAI(os.Getenv("OPENAI_API_KEY"))
+
+// Check if provider implements health checks
+if healthProvider, ok := provider.(llm.HealthCheckProvider); ok {
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
+
+    if err := healthProvider.HealthCheck(ctx); err != nil {
+        log.Printf("Provider unhealthy: %v", err)
+    } else {
+        log.Println("Provider healthy")
+    }
+}
+```
+
+### Implementing Health Checks
+
+```go
+type MyProvider struct {
+    // ...
+}
+
+func (p *MyProvider) HealthCheck(ctx context.Context) error {
+    // Simple health check: make a minimal API call
+    req := &llm.CompletionRequest{
+        Model:      "gpt-3.5-turbo",
+        UserPrompt: "ping",
+        MaxTokens:  1,
+    }
+
+    _, err := p.GenerateCompletion(ctx, req)
+    return err
 }
 ```
 

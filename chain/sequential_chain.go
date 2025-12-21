@@ -110,14 +110,27 @@ func (c *SequentialChain) Call(ctx context.Context, inputs map[string]any) (map[
 	return result, nil
 }
 
-// Stream executes the chain and streams results
+// Stream executes the chain and streams results.
+// The returned channel is closed when streaming completes or context is cancelled.
 func (c *SequentialChain) Stream(ctx context.Context, inputs map[string]any) (<-chan StreamEvent, error) {
 	ch := make(chan StreamEvent, 10)
 
 	go func() {
 		defer close(ch)
 
-		ch <- MakeStreamEvent(StreamEventStart, "", map[string]any{"chain": c.Name()}, nil)
+		// Helper to send with context check
+		send := func(event StreamEvent) bool {
+			select {
+			case <-ctx.Done():
+				return false
+			case ch <- event:
+				return true
+			}
+		}
+
+		if !send(MakeStreamEvent(StreamEventStart, "", map[string]any{"chain": c.Name()}, nil)) {
+			return
+		}
 
 		// Accumulate all outputs
 		allOutputs := CopyInputs(inputs)
@@ -126,7 +139,7 @@ func (c *SequentialChain) Stream(ctx context.Context, inputs map[string]any) (<-
 		for i, chain := range c.chains {
 			select {
 			case <-ctx.Done():
-				ch <- MakeStreamEvent(StreamEventError, "", nil, ctx.Err())
+				send(MakeStreamEvent(StreamEventError, "", nil, ctx.Err()))
 				return
 			default:
 			}
@@ -134,7 +147,7 @@ func (c *SequentialChain) Stream(ctx context.Context, inputs map[string]any) (<-
 			// Stream from each chain
 			streamCh, err := chain.Stream(ctx, allOutputs)
 			if err != nil {
-				ch <- MakeStreamEvent(StreamEventError, "", nil, err)
+				send(MakeStreamEvent(StreamEventError, "", nil, err))
 				return
 			}
 
@@ -143,7 +156,9 @@ func (c *SequentialChain) Stream(ctx context.Context, inputs map[string]any) (<-
 			for event := range streamCh {
 				// Forward intermediate events
 				if event.Type != StreamEventComplete {
-					ch <- event
+					if !send(event) {
+						return
+					}
 				} else {
 					lastData = event.Data
 				}
@@ -155,11 +170,13 @@ func (c *SequentialChain) Stream(ctx context.Context, inputs map[string]any) (<-
 			}
 
 			// Emit chunk event for this chain's completion
-			ch <- MakeStreamEvent(StreamEventChunk, "", map[string]any{
+			if !send(MakeStreamEvent(StreamEventChunk, "", map[string]any{
 				"chain_index": i,
 				"chain_name":  chain.Name(),
 				"outputs":     lastData,
-			}, nil)
+			}, nil)) {
+				return
+			}
 		}
 
 		// Filter to requested output keys
@@ -170,7 +187,7 @@ func (c *SequentialChain) Stream(ctx context.Context, inputs map[string]any) (<-
 			}
 		}
 
-		ch <- MakeStreamEvent(StreamEventComplete, "", result, nil)
+		send(MakeStreamEvent(StreamEventComplete, "", result, nil))
 	}()
 
 	return ch, nil
@@ -254,20 +271,31 @@ func (c *SimpleSequentialChain) Call(ctx context.Context, inputs map[string]any)
 	return currentInputs, nil
 }
 
-// Stream executes and streams results
+// Stream executes and streams results.
+// The returned channel is closed when streaming completes or context is cancelled.
 func (c *SimpleSequentialChain) Stream(ctx context.Context, inputs map[string]any) (<-chan StreamEvent, error) {
 	ch := make(chan StreamEvent, 10)
 
 	go func() {
 		defer close(ch)
 
+		// Helper to send with context check
+		send := func(event StreamEvent) bool {
+			select {
+			case <-ctx.Done():
+				return false
+			case ch <- event:
+				return true
+			}
+		}
+
 		result, err := c.Call(ctx, inputs)
 		if err != nil {
-			ch <- MakeStreamEvent(StreamEventError, "", nil, err)
+			send(MakeStreamEvent(StreamEventError, "", nil, err))
 			return
 		}
 
-		ch <- MakeStreamEvent(StreamEventComplete, "", result, nil)
+		send(MakeStreamEvent(StreamEventComplete, "", result, nil))
 	}()
 
 	return ch, nil

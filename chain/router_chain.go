@@ -135,19 +135,32 @@ func (c *RouterChain) getChain(routeName string) Chain {
 	return chain
 }
 
-// Stream executes and streams results from the selected chain
+// Stream executes and streams results from the selected chain.
+// The returned channel is closed when streaming completes or context is cancelled.
 func (c *RouterChain) Stream(ctx context.Context, inputs map[string]any) (<-chan StreamEvent, error) {
 	ch := make(chan StreamEvent, 10)
 
 	go func() {
 		defer close(ch)
 
-		ch <- MakeStreamEvent(StreamEventStart, "", map[string]any{"chain": c.Name()}, nil)
+		// Helper to send with context check
+		send := func(event StreamEvent) bool {
+			select {
+			case <-ctx.Done():
+				return false
+			case ch <- event:
+				return true
+			}
+		}
+
+		if !send(MakeStreamEvent(StreamEventStart, "", map[string]any{"chain": c.Name()}, nil)) {
+			return
+		}
 
 		// Determine route
 		routeName, err := c.routerFunc(inputs)
 		if err != nil {
-			ch <- MakeStreamEvent(StreamEventError, "", nil, fmt.Errorf("routing error: %w", err))
+			send(MakeStreamEvent(StreamEventError, "", nil, fmt.Errorf("routing error: %w", err)))
 			return
 		}
 
@@ -155,14 +168,14 @@ func (c *RouterChain) Stream(ctx context.Context, inputs map[string]any) (<-chan
 		chain := c.getChain(routeName)
 
 		if chain == nil {
-			ch <- MakeStreamEvent(StreamEventError, "", nil, fmt.Errorf("no chain found for route: %s", routeName))
+			send(MakeStreamEvent(StreamEventError, "", nil, fmt.Errorf("no chain found for route: %s", routeName)))
 			return
 		}
 
 		// Stream from the selected chain
 		streamCh, err := chain.Stream(ctx, inputs)
 		if err != nil {
-			ch <- MakeStreamEvent(StreamEventError, "", nil, err)
+			send(MakeStreamEvent(StreamEventError, "", nil, err))
 			return
 		}
 
@@ -170,13 +183,14 @@ func (c *RouterChain) Stream(ctx context.Context, inputs map[string]any) (<-chan
 		for {
 			select {
 			case <-ctx.Done():
-				ch <- MakeStreamEvent(StreamEventError, "", nil, ctx.Err())
 				return
 			case event, ok := <-streamCh:
 				if !ok {
 					return
 				}
-				ch <- event
+				if !send(event) {
+					return
+				}
 			}
 		}
 	}()

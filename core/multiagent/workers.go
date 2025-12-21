@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/Ranganaths/minion/observability"
@@ -17,7 +18,7 @@ type WorkerAgent struct {
 	metadata    *AgentMetadata
 	protocol    Protocol
 	taskHandler TaskHandler
-	running     bool
+	running     atomic.Bool
 	stopCh      chan struct{}
 	metrics     *observability.MetricsCollector
 	tracer      *observability.Tracer
@@ -53,7 +54,7 @@ func NewWorkerAgent(metadata *AgentMetadata, protocol Protocol, handler TaskHand
 
 // Start starts the worker agent
 func (w *WorkerAgent) Start(ctx context.Context) error {
-	w.running = true
+	w.running.Store(true)
 
 	// Subscribe to task messages
 	err := w.protocol.Subscribe(ctx, w.metadata.AgentID, []MessageType{
@@ -72,7 +73,7 @@ func (w *WorkerAgent) Start(ctx context.Context) error {
 
 // Stop stops the worker agent
 func (w *WorkerAgent) Stop(ctx context.Context) error {
-	w.running = false
+	w.running.Store(false)
 	close(w.stopCh)
 
 	return w.protocol.Unsubscribe(ctx, w.metadata.AgentID)
@@ -83,7 +84,7 @@ func (w *WorkerAgent) processMessages(ctx context.Context) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
-	for w.running {
+	for w.running.Load() {
 		select {
 		case <-w.stopCh:
 			return
