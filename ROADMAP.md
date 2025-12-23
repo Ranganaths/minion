@@ -1,7 +1,7 @@
 # Minion Framework - Roadmap
 
 **Last Updated**: December 2024
-**Current Version**: v5.0
+**Current Version**: v5.1
 **Production Readiness Score**: 100/100
 
 ---
@@ -14,6 +14,7 @@ The Minion framework has achieved full production readiness with comprehensive f
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| v5.1 | Dec 2024 | Debug & Time-Travel system, execution snapshots, Debug Studio TUI |
 | v5.0 | Dec 2024 | LLM validation, health checks, race condition fixes, safe type assertions |
 | v4.0 | Dec 2024 | Resilience package, health monitoring, validation framework |
 | v3.0 | Dec 2024 | Error types, retry package, chain system |
@@ -77,8 +78,19 @@ The Minion framework has achieved full production readiness with comprehensive f
 - [x] PostgreSQL storage with pgvector
 - [x] Safe JSON unmarshaling
 
+### Debug & Time-Travel (v5.1)
+- [x] **Execution Snapshots** - Capture complete state at 22+ checkpoint types
+- [x] **Snapshot Store** - In-memory and PostgreSQL backends
+- [x] **Execution Recorder** - Framework hooks for agents, tools, LLMs, tasks
+- [x] **Timeline Navigation** - Step forward/backward, jump to checkpoints
+- [x] **State Reconstruction** - Rebuild session, task, workspace at any point
+- [x] **Replay Engine** - Simulate, execute, or hybrid replay modes
+- [x] **Branching Engine** - What-if analysis with execution branching
+- [x] **Debug API Server** - HTTP REST API for external tools
+- [x] **Debug Studio TUI** - Interactive terminal UI with Bubble Tea
+
 ### Documentation & Examples
-- [x] 14 comprehensive examples
+- [x] 15 comprehensive examples (including debug-timetravel)
 - [x] Quick reference guide
 - [x] Production readiness guide
 - [x] LLM providers guide
@@ -88,7 +100,7 @@ The Minion framework has achieved full production readiness with comprehensive f
 
 ## In Progress 🔄
 
-### v5.1 (Q1 2025)
+### v5.2 (Q1 2025)
 - [ ] Streaming LLM responses (partial support exists)
 - [ ] Improved test coverage metrics reporting
 - [ ] Performance benchmarking suite
@@ -131,7 +143,7 @@ The Minion framework has achieved full production readiness with comprehensive f
 ### High Priority
 1. **Streaming responses** - Real-time token streaming for LLM responses
 2. **Google Gemini** - Support for Google's latest models
-3. **Web UI** - Visual interface for agent management
+3. **Web UI** - Visual interface for agent management (Debug Studio web version)
 
 ### Medium Priority
 1. **Plugin system** - Extensible architecture for custom plugins

@@ -52,6 +52,14 @@ Minion is a standalone framework that can be used in any Go project for building
 - 🛡️ **Safe Type Assertions** - Helper functions to prevent runtime panics
 - ⚡ **Goroutine Safety** - Context-aware streaming with proper cleanup
 
+### Debug & Time-Travel (NEW!)
+- 🔍 **Execution Snapshots** - Capture complete state at checkpoints
+- ⏪ **Time-Travel Debugging** - Navigate forward/backward through execution
+- 🔀 **What-If Analysis** - Branch execution and compare outcomes
+- 🖥️ **Debug Studio TUI** - Interactive terminal UI for debugging
+- 🌐 **Debug API Server** - HTTP API for external debugging tools
+- 📊 **State Reconstruction** - Rebuild session, task, workspace at any point
+
 ## 📦 Installation
 
 ```bash
@@ -479,9 +487,98 @@ result, err := coordinator.ExecuteTask(ctx, &multiagent.TaskRequest{
 - [Implementation Summary](MULTIAGENT_IMPLEMENTATION.md)
 - [Examples](examples/multiagent/)
 
+## 🔍 Debug & Time-Travel (NEW!)
+
+Minion includes a powerful debugging system with time-travel capabilities, similar to LangGraph Studio:
+
+### Features
+- **Execution Snapshots**: Automatically capture state at 22+ checkpoint types
+- **Timeline Navigation**: Step forward/backward through any execution
+- **State Reconstruction**: Rebuild complete state at any point in time
+- **What-If Analysis**: Create branches with modifications and compare outcomes
+- **Debug API**: HTTP API for external tools and integrations
+- **Terminal UI**: Interactive TUI built with Bubble Tea
+
+### Quick Start
+
+```go
+import (
+    "github.com/Ranganaths/minion/debug/snapshot"
+    "github.com/Ranganaths/minion/debug/recorder"
+    "github.com/Ranganaths/minion/debug/timetravel"
+)
+
+// Create snapshot store
+store := snapshot.NewMemorySnapshotStore()
+
+// Create recorder with hooks
+rec := recorder.NewExecutionRecorder(store, recorder.DefaultRecorderConfig())
+hooks := recorder.NewFrameworkHooks(rec)
+
+// Record agent execution
+agentHooks := hooks.ForAgent("my-agent")
+agentHooks.OnExecutionStart(ctx, input)
+
+// Record tool calls, LLM calls, decisions...
+hooks.ForTool("my_tool").OnStart(ctx, input)
+hooks.ForTool("my_tool").OnEnd(ctx, output, nil)
+
+// End execution
+agentHooks.OnExecutionEnd(ctx, output, nil)
+
+// Time-travel through execution
+timeline, _ := timetravel.NewExecutionTimeline(ctx, store, rec.GetExecutionID())
+timeline.StepBackward()  // Go back
+timeline.JumpToNextError()  // Find errors
+timeline.JumpToCheckpoint(snapshot.CheckpointLLMCallStart)  // Find LLM calls
+
+// What-if analysis
+branching := timetravel.NewBranchingEngine(store)
+comparison, _ := branching.WhatIf(ctx, executionID, 5, &timetravel.Modification{
+    Type:  "input",
+    Value: "modified_input",
+})
+```
+
+### Debug API Server
+
+```bash
+# Start the debug API server
+go run ./examples/debug-timetravel/main.go api
+```
+
+**Endpoints:**
+- `GET /api/v1/executions` - List all executions
+- `GET /api/v1/timeline/:id` - Get execution timeline
+- `POST /api/v1/step` - Step through timeline
+- `POST /api/v1/replay` - Replay from checkpoint
+- `POST /api/v1/branches` - Create execution branch
+- `POST /api/v1/what-if` - Run what-if analysis
+
+### Terminal UI (Debug Studio)
+
+```bash
+# Launch interactive debugger
+go run ./examples/debug-timetravel/main.go tui
+```
+
+**Keyboard shortcuts:**
+- `j/k` - Navigate up/down
+- `h/l` - Step backward/forward in timeline
+- `e/E` - Jump to next/previous error
+- `s` - Open state inspector
+- `?` - Show help
+
+**Documentation:**
+- [Debug Implementation Plan](product-plan/debugging-timetravel-plan.md)
+- [Debug Example](examples/debug-timetravel/)
+
 ## 🛣️ Roadmap
 
 ### Completed ✅
+- [x] **Debug & Time-Travel** - Execution snapshots, timeline navigation, what-if analysis
+- [x] **Debug Studio TUI** - Interactive terminal debugger with Bubble Tea
+- [x] **Debug API Server** - HTTP API for debugging and time-travel operations
 - [x] **Multi-agent collaboration** - Research-based orchestrator with specialized workers
 - [x] **Multiple LLM providers** - OpenAI, Anthropic, TupleLeap
 - [x] **PostgreSQL storage** - Full transaction support
@@ -491,13 +588,19 @@ result, err := coordinator.ExecuteTask(ctx, &multiagent.TaskRequest{
 
 ### In Progress
 - [ ] Streaming responses (partial - chain streaming complete)
-- [ ] Advanced observability (distributed tracing)
 - [ ] Web UI for agent management
 - [ ] Plugin system
 - [ ] Google Gemini provider
-- [ ] Local model support (Ollama)
 
-### Recently Completed
+### Recently Completed (v5.1)
+- [x] **Debug & Time-Travel System** - Complete debugging infrastructure with snapshots
+- [x] **Execution Recorder** - Capture checkpoints during agent/tool/LLM execution
+- [x] **State Reconstructor** - Rebuild state at any point in execution
+- [x] **Branching Engine** - What-if analysis with execution branching
+- [x] **Debug API** - REST API with timeline navigation, replay, and branching
+- [x] **Debug Studio TUI** - Terminal UI with execution list, timeline, state inspector
+
+### Previously Completed (v5.0)
 - [x] **LLM Request Validation** - `Validate()` and `WithDefaults()` methods
 - [x] **Health Check Interface** - `HealthCheckProvider` for provider health monitoring
 - [x] **Safe Type Assertions** - `GetInt`, `GetFloat`, `GetBool`, `GetMap` helpers

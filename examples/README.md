@@ -1,6 +1,6 @@
 # Minion Framework - Examples
 
-This directory contains 14 comprehensive, production-ready examples demonstrating the full capabilities of the Minion agent framework.
+This directory contains 15 comprehensive, production-ready examples demonstrating the full capabilities of the Minion agent framework.
 
 ## 📚 All Examples
 
@@ -12,6 +12,7 @@ This directory contains 14 comprehensive, production-ready examples demonstratin
 | **`with_tools/`** | Custom tools with capability filtering | Tool registration, capability-based access |
 | **`custom_behavior/`** | Specialized agent behaviors | Custom behaviors, processing pipelines |
 | **`chain-features/`** | Chain package production features | Safe type assertions, streaming, validation |
+| **`debug-timetravel/`** | Debug & Time-Travel capabilities | Snapshots, timeline, replay, branching, TUI |
 
 ### Multi-Agent System Examples
 
@@ -20,6 +21,12 @@ This directory contains 14 comprehensive, production-ready examples demonstratin
 | **`multiagent-basic/`** | Basic multi-agent coordinator | Orchestrator pattern, task decomposition |
 | **`multiagent-custom/`** | Custom worker agents | Specialized workers, custom handlers |
 | **`llm_worker/`** | LLM-powered worker agents | Worker integration, LLM task handling |
+
+### Debug & Time-Travel Examples
+
+| Example | Description | Key Features |
+|---------|-------------|--------------|
+| **`debug-timetravel/`** | Complete debugging demo | Snapshots, timeline, replay, branching, TUI, API |
 
 ### LLM Provider Examples
 
