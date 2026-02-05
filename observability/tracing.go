@@ -78,16 +78,22 @@ const (
 	AttrErrorMessage   = "error.message"
 
 	// Multi-agent specific attributes
-	AttrTaskID         = "multiagent.task.id"
-	AttrTaskName       = "multiagent.task.name"
-	AttrTaskType       = "multiagent.task.type"
-	AttrTaskPriority   = "multiagent.task.priority"
-	AttrWorkerID       = "multiagent.worker.id"
+	AttrTaskID           = "multiagent.task.id"
+	AttrTaskName         = "multiagent.task.name"
+	AttrTaskType         = "multiagent.task.type"
+	AttrTaskPriority     = "multiagent.task.priority"
+	AttrWorkerID         = "multiagent.worker.id"
 	AttrWorkerCapability = "multiagent.worker.capability"
-	AttrMessageType    = "multiagent.message.type"
-	AttrMessageID      = "multiagent.message.id"
-	AttrOrchestratorID = "multiagent.orchestrator.id"
-	AttrSubtaskCount   = "multiagent.subtask.count"
+	AttrMessageType      = "multiagent.message.type"
+	AttrMessageID        = "multiagent.message.id"
+	AttrOrchestratorID   = "multiagent.orchestrator.id"
+	AttrSubtaskCount     = "multiagent.subtask.count"
+
+	// Distributed tracing correlation attributes
+	AttrRootTraceID   = "trace.root_id"
+	AttrParentSpanID  = "trace.parent_span_id"
+	AttrExecutionID   = "trace.execution_id"
+	AttrParentTaskID  = "trace.parent_task_id"
 )
 
 // NewTracer creates a new tracer instance
@@ -106,6 +112,10 @@ func NewTracer(config TracingConfig) (*Tracer, error) {
 	var err error
 
 	switch config.Exporter {
+	case "none", "noop", "":
+		// No-op exporter - traces are recorded but not exported anywhere
+		// This is useful for testing or when you want tracing spans without external dependencies
+		exporter = &noopExporter{}
 	case "jaeger":
 		exporter, err = jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(config.JaegerURL)))
 		if err != nil {
@@ -128,7 +138,7 @@ func NewTracer(config TracingConfig) (*Tracer, error) {
 			return nil, fmt.Errorf("failed to create stdout exporter: %w", err)
 		}
 	default:
-		return nil, fmt.Errorf("unknown exporter type: %s", config.Exporter)
+		return nil, fmt.Errorf("unknown exporter type: %s (valid: none, stdout, jaeger, otlp)", config.Exporter)
 	}
 
 	// Create resource with service information
@@ -166,10 +176,24 @@ func NewTracer(config TracingConfig) (*Tracer, error) {
 	}, nil
 }
 
-// Close shuts down the tracer provider
+// Close shuts down the tracer provider with proper span flushing
 func (t *Tracer) Close(ctx context.Context) error {
 	if t.provider != nil {
+		// First, force flush any pending spans
+		if err := t.provider.ForceFlush(ctx); err != nil {
+			// Log but continue with shutdown
+			fmt.Printf("Warning: failed to flush spans: %v\n", err)
+		}
+		// Then shutdown the provider
 		return t.provider.Shutdown(ctx)
+	}
+	return nil
+}
+
+// ForceFlush forces the export of all pending spans
+func (t *Tracer) ForceFlush(ctx context.Context) error {
+	if t.provider != nil {
+		return t.provider.ForceFlush(ctx)
 	}
 	return nil
 }
@@ -355,6 +379,17 @@ func (t *Tracer) InjectTraceContext(ctx context.Context) context.Context {
 	return ctx
 }
 
+// noopExporter discards all spans - for zero-dependency operation
+type noopExporter struct{}
+
+func (e *noopExporter) ExportSpans(ctx context.Context, spans []sdktrace.ReadOnlySpan) error {
+	return nil // Discard all spans
+}
+
+func (e *noopExporter) Shutdown(ctx context.Context) error {
+	return nil
+}
+
 // stdout exporter for development
 type stdoutExporter struct{}
 
@@ -404,12 +439,35 @@ func GetTracer() *Tracer {
 	return globalTracer
 }
 
-// ShutdownTracer shuts down the global tracer
+// ShutdownTracer shuts down the global tracer with proper span flushing
 func ShutdownTracer(ctx context.Context) error {
 	if globalTracer != nil {
 		return globalTracer.Close(ctx)
 	}
 	return nil
+}
+
+// FlushTracer forces the export of all pending spans without shutting down
+func FlushTracer(ctx context.Context) error {
+	if globalTracer != nil {
+		return globalTracer.ForceFlush(ctx)
+	}
+	return nil
+}
+
+// GracefulShutdown performs a graceful shutdown with timeout
+// It flushes spans, then shuts down the tracer
+func GracefulShutdown(timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	// First flush any pending spans
+	if err := FlushTracer(ctx); err != nil {
+		fmt.Printf("Warning: failed to flush tracer: %v\n", err)
+	}
+
+	// Then shutdown
+	return ShutdownTracer(ctx)
 }
 
 // Convenience functions using global tracer

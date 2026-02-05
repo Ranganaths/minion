@@ -8,10 +8,13 @@ import (
 	"github.com/Ranganaths/minion/llm"
 	"github.com/Ranganaths/minion/mcp/bridge"
 	"github.com/Ranganaths/minion/mcp/client"
+	"github.com/Ranganaths/minion/metrics"
 	"github.com/Ranganaths/minion/models"
+	"github.com/Ranganaths/minion/observability"
 	"github.com/Ranganaths/minion/storage"
 	"github.com/Ranganaths/minion/tools"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // FrameworkImpl is the main implementation of the agent framework
@@ -261,11 +264,26 @@ func (f *FrameworkImpl) GetToolsForAgent(agent *models.Agent) []interface{} {
 
 // ExecuteTool executes a tool by name with the given parameters
 func (f *FrameworkImpl) ExecuteTool(ctx context.Context, toolName string, params map[string]interface{}) (*models.ToolOutput, error) {
+	// Start tool execution span
+	ctx, span := observability.StartToolSpan(ctx, toolName, params)
+	defer func() {
+		span.End()
+	}()
+
 	input := &models.ToolInput{
 		Params: params,
 	}
 
-	return f.toolRegistry.Execute(ctx, toolName, input)
+	output, err := f.toolRegistry.Execute(ctx, toolName, input)
+	if err != nil {
+		observability.RecordError(span, err, "tool_execution_error")
+		return nil, err
+	}
+
+	// Record success
+	span.SetAttributes(attribute.Bool("tool.success", output.Success))
+
+	return output, nil
 }
 
 // GetTool retrieves a tool by name
@@ -295,9 +313,22 @@ func (f *FrameworkImpl) Execute(ctx context.Context, agentID string, input *mode
 		return nil, fmt.Errorf("failed to get agent: %w", err)
 	}
 
+	// Start tracing span for agent execution
+	ctx, span := observability.StartAgentSpan(ctx, agent.ID, agent.Name, "execute")
+	defer func() {
+		observability.EndSpan(span, err)
+	}()
+
+	// Add execution context attributes
+	span.SetAttributes(
+		attribute.String("agent.behavior_type", agent.BehaviorType),
+		attribute.String("agent.status", string(agent.Status)),
+	)
+
 	// Check if agent is active
 	if agent.Status != models.StatusActive && agent.Status != models.StatusDraft {
-		return nil, fmt.Errorf("agent is not active (status: %s)", agent.Status)
+		err = fmt.Errorf("agent is not active (status: %s)", agent.Status)
+		return nil, err
 	}
 
 	// 2. Get behavior
@@ -306,8 +337,10 @@ func (f *FrameworkImpl) Execute(ctx context.Context, agentID string, input *mode
 		return nil, fmt.Errorf("failed to get behavior: %w", err)
 	}
 
-	// 3. Process input
+	// 3. Process input (with span)
+	ctx, inputSpan := observability.StartSpan(ctx, "agent.process_input", observability.SpanKindAgent)
 	processedInput, err := behavior.ProcessInput(ctx, agent, input)
+	observability.EndSpan(inputSpan, err)
 	if err != nil {
 		return nil, fmt.Errorf("failed to process input: %w", err)
 	}
@@ -337,6 +370,8 @@ func (f *FrameworkImpl) Execute(ctx context.Context, agentID string, input *mode
 		maxTokens = 1000 // Default max tokens
 	}
 
+	// Start LLM span
+	ctx, llmSpan := observability.StartLLMSpan(ctx, "openai", llmModel)
 	completion, err := f.llmProvider.GenerateCompletion(ctx, &llm.CompletionRequest{
 		SystemPrompt: systemPrompt,
 		UserPrompt:   userPrompt,
@@ -345,10 +380,21 @@ func (f *FrameworkImpl) Execute(ctx context.Context, agentID string, input *mode
 		Model:        llmModel,
 	})
 	if err != nil {
+		observability.EndSpan(llmSpan, err)
 		// Record failed execution
 		f.recordActivity(ctx, agent.ID, input, nil, "failed", time.Since(startTime), err.Error())
+		// Record metrics
+		metrics.NewCounter(metrics.MetricLLMCallErrors, metrics.Labels{"agent_id": agent.ID, "model": llmModel}).Inc()
 		return nil, fmt.Errorf("LLM completion failed: %w", err)
 	}
+
+	// Record LLM metrics on span
+	observability.GetTracer().RecordLLMTokens(llmSpan, completion.TokensUsed, 0, 0)
+	observability.EndSpan(llmSpan, nil)
+
+	// Record LLM metrics
+	metrics.NewCounter(metrics.MetricLLMCallsTotal, metrics.Labels{"agent_id": agent.ID, "model": llmModel}).Inc()
+	metrics.NewCounter(metrics.MetricLLMTokensUsed, metrics.Labels{"agent_id": agent.ID, "model": llmModel}).Add(float64(completion.TokensUsed))
 
 	// 7. Create output
 	output := &models.Output{
@@ -358,11 +404,14 @@ func (f *FrameworkImpl) Execute(ctx context.Context, agentID string, input *mode
 			"tokens_used":   completion.TokensUsed,
 			"model":         completion.Model,
 			"finish_reason": completion.FinishReason,
+			"trace_id":      observability.GetTracer().GetTraceID(ctx),
 		},
 	}
 
-	// 8. Process output
+	// 8. Process output (with span)
+	ctx, outputSpan := observability.StartSpan(ctx, "agent.process_output", observability.SpanKindAgent)
 	processedOutput, err := behavior.ProcessOutput(ctx, agent, output)
+	observability.EndSpan(outputSpan, err)
 	if err != nil {
 		return nil, fmt.Errorf("failed to process output: %w", err)
 	}
@@ -373,6 +422,15 @@ func (f *FrameworkImpl) Execute(ctx context.Context, agentID string, input *mode
 
 	// 10. Update metrics
 	f.updateMetrics(ctx, agent.ID, true, duration)
+
+	// Record execution duration histogram
+	metrics.NewHistogram(metrics.MetricLLMCallDuration, metrics.Labels{"agent_id": agent.ID}).Observe(duration.Seconds())
+
+	// Add final span attributes
+	span.SetAttributes(
+		attribute.Int64("execution.duration_ms", duration.Milliseconds()),
+		attribute.Int("llm.tokens_used", completion.TokensUsed),
+	)
 
 	return processedOutput.Original, nil
 }

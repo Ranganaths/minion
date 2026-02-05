@@ -4,6 +4,7 @@ package vectorstore
 
 import (
 	"context"
+	"time"
 
 	"github.com/Ranganaths/minion/embeddings"
 )
@@ -30,8 +31,110 @@ type VectorStoreRetriever interface {
 	// SimilaritySearchByVector searches using a pre-computed embedding
 	SimilaritySearchByVector(ctx context.Context, embedding []float32, k int) ([]Document, error)
 
+	// SimilaritySearchByVectorWithScore searches using a pre-computed embedding with scores
+	SimilaritySearchByVectorWithScore(ctx context.Context, embedding []float32, k int) ([]SearchResult, error)
+
+	// SimilaritySearchWithFilters searches with metadata filters
+	SimilaritySearchWithFilters(ctx context.Context, query string, k int, filters []Filter) ([]Document, error)
+
 	// MaxMarginalRelevanceSearch performs MMR search for diversity
 	MaxMarginalRelevanceSearch(ctx context.Context, query string, k int, fetchK int, lambda float32) ([]Document, error)
+
+	// GetDocument retrieves a document by ID
+	GetDocument(ctx context.Context, id string) (*Document, error)
+
+	// UpdateDocument updates a document
+	UpdateDocument(ctx context.Context, doc Document) error
+
+	// Count returns the number of documents in the store
+	Count(ctx context.Context) (int64, error)
+
+	// Close closes the vector store connection
+	Close() error
+}
+
+// IndexManager provides index management capabilities
+type IndexManager interface {
+	// CreateIndex creates a vector index
+	CreateIndex(ctx context.Context, config IndexConfig) error
+
+	// DropIndex drops the vector index
+	DropIndex(ctx context.Context) error
+
+	// IndexExists checks if an index exists
+	IndexExists(ctx context.Context) (bool, error)
+
+	// GetIndexStats returns index statistics
+	GetIndexStats(ctx context.Context) (*IndexStats, error)
+}
+
+// IndexConfig configures a vector index
+type IndexConfig struct {
+	// Name of the index
+	Name string
+
+	// Dimension of the vectors
+	Dimension int
+
+	// DistanceMetric to use for similarity
+	DistanceMetric DistanceMetric
+
+	// IndexType determines the index algorithm
+	IndexType IndexType
+
+	// HNSW configuration (if using HNSW index)
+	HNSW *HNSWConfig
+
+	// IVFFlat configuration (if using IVFFlat index)
+	IVFFlat *IVFFlatConfig
+}
+
+// IndexType represents the type of vector index
+type IndexType string
+
+const (
+	IndexTypeHNSW    IndexType = "hnsw"
+	IndexTypeIVFFlat IndexType = "ivfflat"
+	IndexTypeFlat    IndexType = "flat"
+)
+
+// HNSWConfig configures HNSW index
+type HNSWConfig struct {
+	M              int // Max connections per layer
+	EfConstruction int // Size of dynamic list during construction
+	EfSearch       int // Size of dynamic list during search
+}
+
+// IVFFlatConfig configures IVFFlat index
+type IVFFlatConfig struct {
+	NLists  int // Number of clusters
+	NProbes int // Number of clusters to search
+}
+
+// IndexStats contains index statistics
+type IndexStats struct {
+	TotalDocuments int64
+	IndexSize      int64
+	Dimension      int
+	IndexType      IndexType
+	LastModified   time.Time
+}
+
+// DefaultHNSWConfig returns default HNSW configuration
+func DefaultHNSWConfig() *HNSWConfig {
+	return &HNSWConfig{
+		M:              16,
+		EfConstruction: 64,
+		EfSearch:       40,
+	}
+}
+
+// DefaultIVFFlatConfig returns default IVFFlat configuration
+func DefaultIVFFlatConfig() *IVFFlatConfig {
+	return &IVFFlatConfig{
+		NLists:  100,
+		NProbes: 10,
+	}
 }
 
 // Document represents a document with content and metadata

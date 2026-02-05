@@ -8,7 +8,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Ranganaths/minion/observability"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // OrchestratorConfig configures the orchestrator behavior
@@ -18,6 +20,7 @@ type OrchestratorConfig struct {
 	MaxConcurrentTasks int           `json:"max_concurrent_tasks"`
 	TaskTimeout        time.Duration `json:"task_timeout"`
 	EnableReplanning   bool          `json:"enable_replanning"` // Re-plan on errors
+	DefaultModel       string        `json:"default_model"`     // Default LLM model to use
 }
 
 // DefaultOrchestratorConfig returns default configuration
@@ -28,6 +31,7 @@ func DefaultOrchestratorConfig() *OrchestratorConfig {
 		MaxConcurrentTasks: 5,
 		TaskTimeout:        time.Minute * 5,
 		EnableReplanning:   true,
+		DefaultModel:       "", // Empty means use provider's default
 	}
 }
 
@@ -78,13 +82,6 @@ func NewOrchestrator(
 
 	orchestratorID := uuid.New().String()
 
-	// Subscribe to receive result and error messages from workers
-	protocol.Subscribe(context.Background(), orchestratorID, []MessageType{
-		MessageTypeResult,
-		MessageTypeError,
-		MessageTypeInform,
-	})
-
 	return &Orchestrator{
 		id:             orchestratorID,
 		protocol:       protocol,
@@ -96,8 +93,27 @@ func NewOrchestrator(
 	}
 }
 
+// Start initializes the orchestrator and subscribes to messages
+func (o *Orchestrator) Start(ctx context.Context) error {
+	// Subscribe to receive result and error messages from workers
+	if err := o.protocol.Subscribe(ctx, o.id, []MessageType{
+		MessageTypeResult,
+		MessageTypeError,
+		MessageTypeInform,
+	}); err != nil {
+		return fmt.Errorf("failed to subscribe orchestrator: %w", err)
+	}
+	return nil
+}
+
+// GetID returns the orchestrator's ID
+func (o *Orchestrator) GetID() string {
+	return o.id
+}
+
 // RegisterWorker registers a worker agent
-func (o *Orchestrator) RegisterWorker(metadata *AgentMetadata) error {
+// RegisterWorker registers a worker agent with the orchestrator
+func (o *Orchestrator) RegisterWorker(ctx context.Context, metadata *AgentMetadata) error {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
@@ -108,20 +124,32 @@ func (o *Orchestrator) RegisterWorker(metadata *AgentMetadata) error {
 	o.workers[metadata.AgentID] = metadata
 
 	// Subscribe worker to relevant message types
-	return o.protocol.Subscribe(context.Background(), metadata.AgentID, []MessageType{
+	if err := o.protocol.Subscribe(ctx, metadata.AgentID, []MessageType{
 		MessageTypeTask,
 		MessageTypeDelegate,
-	})
+	}); err != nil {
+		delete(o.workers, metadata.AgentID) // Rollback on failure
+		return fmt.Errorf("failed to subscribe worker %s: %w", metadata.AgentID, err)
+	}
+
+	return nil
 }
 
 // UnregisterWorker removes a worker agent
-func (o *Orchestrator) UnregisterWorker(agentID string) error {
+func (o *Orchestrator) UnregisterWorker(ctx context.Context, agentID string) error {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
-	delete(o.workers, agentID)
+	if _, exists := o.workers[agentID]; !exists {
+		return fmt.Errorf("worker %s not found", agentID)
+	}
 
-	return o.protocol.Unsubscribe(context.Background(), agentID)
+	if err := o.protocol.Unsubscribe(ctx, agentID); err != nil {
+		return fmt.Errorf("failed to unsubscribe worker %s: %w", agentID, err)
+	}
+
+	delete(o.workers, agentID)
+	return nil
 }
 
 // GetWorkers returns all registered workers
@@ -139,6 +167,9 @@ func (o *Orchestrator) GetWorkers() []*AgentMetadata {
 
 // ExecuteTask executes a complex task using multiple agents
 func (o *Orchestrator) ExecuteTask(ctx context.Context, taskReq *TaskRequest) (*TaskResult, error) {
+	// Generate execution ID for this entire orchestration session
+	executionID := uuid.New().String()
+
 	// 1. Create main task
 	task := &Task{
 		ID:          uuid.New().String(),
@@ -153,25 +184,77 @@ func (o *Orchestrator) ExecuteTask(ctx context.Context, taskReq *TaskRequest) (*
 		UpdatedAt:   time.Now(),
 	}
 
-	if err := o.taskLedger.CreateTask(ctx, task); err != nil {
+	// Start orchestrator task span
+	ctx, span := observability.StartMultiAgentTaskSpan(ctx, task.ID, task.Name, task.Type, int(task.Priority))
+	var err error
+	defer func() {
+		observability.EndSpan(span, err)
+	}()
+
+	// Get trace IDs for propagation to workers
+	tracer := observability.GetTracer()
+	rootTraceID := tracer.GetTraceID(ctx)
+	rootSpanID := tracer.GetSpanID(ctx)
+
+	// Create trace context for the main task
+	task.TraceContext = NewTraceContext(rootTraceID, rootSpanID, rootTraceID, o.id).
+		WithExecutionID(executionID)
+
+	// Record task creation event for agent traceability
+	RecordExecutionEvent(ctx, &ExecutionEvent{
+		ID:           uuid.New().String(),
+		Type:         EventTypeTaskCreated,
+		TaskID:       task.ID,
+		AgentID:      o.id,
+		AgentRole:    RoleOrchestrator,
+		Action:       "create_task",
+		Input:        task,
+		Timestamp:    time.Now(),
+		TraceContext: task.TraceContext,
+		Metadata: map[string]interface{}{
+			"task_name": task.Name,
+			"task_type": task.Type,
+			"priority":  task.Priority,
+		},
+	})
+
+	// Add orchestrator context
+	span.SetAttributes(
+		attribute.String(observability.AttrOrchestratorID, o.id),
+		attribute.Int("orchestrator.worker_count", len(o.workers)),
+		attribute.String("execution.id", executionID),
+		attribute.String("trace.root_id", rootTraceID),
+	)
+
+	if err = o.taskLedger.CreateTask(ctx, task); err != nil {
 		return nil, fmt.Errorf("failed to create task: %w", err)
 	}
 
 	// 2. Plan task decomposition using LLM
+	ctx, planSpan := observability.StartOrchestratorSpan(ctx, o.id, "plan_task")
 	subtasks, err := o.planTask(ctx, task)
 	if err != nil {
+		observability.EndSpan(planSpan, err)
 		return nil, fmt.Errorf("task planning failed: %w", err)
 	}
+	planSpan.SetAttributes(attribute.Int(observability.AttrSubtaskCount, len(subtasks)))
+	observability.EndSpan(planSpan, nil)
 
 	// 3. Execute subtasks
+	ctx, execSpan := observability.StartOrchestratorSpan(ctx, o.id, "execute_subtasks")
 	result, err := o.executeSubtasks(ctx, task, subtasks)
 	if err != nil {
+		observability.EndSpan(execSpan, err)
 		// If replanning is enabled, try to recover
 		if o.config.EnableReplanning {
-			return o.replanAndExecute(ctx, task, err)
+			ctx, replanSpan := observability.StartOrchestratorSpan(ctx, o.id, "replan_and_execute")
+			result, err = o.replanAndExecute(ctx, task, err)
+			observability.EndSpan(replanSpan, err)
+			return result, err
 		}
 		return nil, err
 	}
+	observability.EndSpan(execSpan, nil)
 
 	return result, nil
 }
@@ -234,7 +317,7 @@ Please decompose this task into subtasks.`, task.Name, task.Description, task.In
 		UserPrompt:   userPrompt,
 		Temperature:  0.3, // Lower temperature for more deterministic planning
 		MaxTokens:    2000,
-		Model:        "gpt-4",
+		Model:        o.config.DefaultModel,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("LLM planning failed: %w", err)
@@ -259,47 +342,99 @@ Please decompose this task into subtasks.`, task.Name, task.Description, task.In
 	return subtasks, nil
 }
 
-// executeSubtasks executes a list of subtasks
+// executeSubtasks executes a list of subtasks with proper dependency handling
 func (o *Orchestrator) executeSubtasks(ctx context.Context, mainTask *Task, subtasks []*Task) (*TaskResult, error) {
 	// Track completion
 	completed := make(map[string]bool)
 	results := make(map[string]interface{})
-	var lastError error
+	failed := make(map[string]error)
+	pending := make(map[string]*Task)
 
+	// Initialize pending tasks
 	for _, subtask := range subtasks {
-		// Check dependencies
-		if !o.checkDependencies(subtask, completed) {
-			continue // Skip for now, will retry
-		}
+		pending[subtask.ID] = subtask
+	}
 
-		// Assign to worker
-		if err := o.assignTaskToWorker(ctx, subtask); err != nil {
-			lastError = err
-			continue
-		}
+	// Keep processing until all tasks are done or no progress can be made
+	maxIterations := len(subtasks) * 2 // Safety limit to prevent infinite loops
+	for iteration := 0; iteration < maxIterations && len(pending) > 0; iteration++ {
+		madeProgress := false
 
-		// Wait for completion (with timeout)
-		result, err := o.waitForTaskCompletion(ctx, subtask)
-		if err != nil {
-			lastError = err
-			if o.config.MaxRetries > 0 {
-				// Retry logic
-				result, err = o.retryTask(ctx, subtask)
-				if err != nil {
-					continue
+		for taskID, subtask := range pending {
+			// Check if context is cancelled
+			select {
+			case <-ctx.Done():
+				return nil, fmt.Errorf("context cancelled: %w", ctx.Err())
+			default:
+			}
+
+			// Check dependencies
+			if !o.checkDependencies(subtask, completed) {
+				// Check if any dependency has failed
+				for _, depID := range subtask.Dependencies {
+					if _, hasFailed := failed[depID]; hasFailed {
+						failed[taskID] = fmt.Errorf("dependency %s failed", depID)
+						delete(pending, taskID)
+						madeProgress = true
+						break
+					}
 				}
-			} else {
+				continue // Dependencies not met yet
+			}
+
+			// Assign to worker
+			if err := o.assignTaskToWorker(ctx, subtask); err != nil {
+				failed[taskID] = fmt.Errorf("assignment failed: %w", err)
+				delete(pending, taskID)
+				madeProgress = true
 				continue
 			}
+
+			// Wait for completion (with timeout)
+			result, err := o.waitForTaskCompletion(ctx, subtask)
+			if err != nil {
+				if o.config.MaxRetries > 0 {
+					// Retry logic
+					result, err = o.retryTask(ctx, subtask)
+				}
+				if err != nil {
+					failed[taskID] = fmt.Errorf("execution failed: %w", err)
+					delete(pending, taskID)
+					madeProgress = true
+					continue
+				}
+			}
+
+			completed[subtask.ID] = true
+			results[subtask.ID] = result
+			delete(pending, taskID)
+			madeProgress = true
 		}
 
-		completed[subtask.ID] = true
-		results[subtask.ID] = result
+		// If no progress was made and there are still pending tasks, we have a deadlock
+		if !madeProgress && len(pending) > 0 {
+			pendingIDs := make([]string, 0, len(pending))
+			for id := range pending {
+				pendingIDs = append(pendingIDs, id)
+			}
+			return nil, fmt.Errorf("dependency deadlock detected: tasks %v cannot proceed", pendingIDs)
+		}
 	}
 
 	// Check if all completed
-	if len(completed) != len(subtasks) {
-		return nil, fmt.Errorf("failed to complete all subtasks: %w", lastError)
+	if len(failed) > 0 {
+		// Collect all errors
+		errMsgs := make([]string, 0, len(failed))
+		for taskID, err := range failed {
+			errMsgs = append(errMsgs, fmt.Sprintf("%s: %v", taskID, err))
+		}
+		return &TaskResult{
+			TaskID:      mainTask.ID,
+			Status:      "partial_failure",
+			Output:      results,
+			Error:       strings.Join(errMsgs, "; "),
+			CompletedAt: time.Now(),
+		}, fmt.Errorf("some subtasks failed: %s", strings.Join(errMsgs, "; "))
 	}
 
 	// Aggregate results
@@ -313,28 +448,103 @@ func (o *Orchestrator) executeSubtasks(ctx context.Context, mainTask *Task, subt
 
 // assignTaskToWorker assigns a task to the most suitable worker
 func (o *Orchestrator) assignTaskToWorker(ctx context.Context, task *Task) error {
+	// Start worker assignment span
+	ctx, span := observability.StartOrchestratorSpan(ctx, o.id, "assign_worker")
+	defer span.End()
+
+	span.SetAttributes(attribute.String(observability.AttrTaskID, task.ID))
+
 	// Find suitable worker
 	worker, err := o.findWorkerForTask(task)
 	if err != nil {
+		observability.RecordError(span, err, "worker_selection_error")
 		return err
 	}
+
+	span.SetAttributes(
+		attribute.String(observability.AttrWorkerID, worker.AgentID),
+		attribute.String("worker.role", string(worker.Role)),
+	)
 
 	// Update task status
 	task.Status = TaskStatusAssigned
 	task.AssignedTo = worker.AgentID
 	o.taskLedger.UpdateTask(ctx, task)
 
-	// Send task message to worker
-	msg := &Message{
-		ID:        uuid.New().String(),
-		Type:      MessageTypeTask,
-		From:      o.id,
-		To:        worker.AgentID,
-		Content:   task,
-		CreatedAt: time.Now(),
+	// Record task assignment event
+	RecordExecutionEvent(ctx, &ExecutionEvent{
+		ID:           uuid.New().String(),
+		Type:         EventTypeTaskAssigned,
+		TaskID:       task.ID,
+		AgentID:      worker.AgentID,
+		AgentRole:    worker.Role,
+		Action:       "assign_task",
+		Timestamp:    time.Now(),
+		TraceContext: task.TraceContext,
+		Metadata: map[string]interface{}{
+			"worker_id":   worker.AgentID,
+			"worker_role": worker.Role,
+			"task_name":   task.Name,
+		},
+	})
+
+	// Get current trace context for propagation
+	tracer := observability.GetTracer()
+	currentTraceID := tracer.GetTraceID(ctx)
+	currentSpanID := tracer.GetSpanID(ctx)
+
+	// Build trace context for the message
+	// Use task's root trace ID if available, otherwise use current trace
+	var msgTraceContext *TraceContext
+	if task.TraceContext != nil {
+		msgTraceContext = &TraceContext{
+			TraceID:        currentTraceID,
+			SpanID:         currentSpanID,
+			RootTraceID:    task.TraceContext.RootTraceID,
+			ParentSpanID:   currentSpanID,
+			OrchestratorID: o.id,
+			ExecutionID:    task.TraceContext.ExecutionID,
+			Baggage: map[string]string{
+				"task_id":        task.ID,
+				"task_name":      task.Name,
+				"parent_task_id": task.GetParentTaskID(),
+			},
+		}
+	} else {
+		msgTraceContext = NewTraceContext(currentTraceID, currentSpanID, currentTraceID, o.id).
+			WithParentSpan(currentSpanID)
+		msgTraceContext.SetBaggage("task_id", task.ID)
+		msgTraceContext.SetBaggage("task_name", task.Name)
 	}
 
-	return o.protocol.Send(ctx, msg)
+	// Ensure task has trace context
+	if task.TraceContext == nil {
+		task.TraceContext = msgTraceContext
+	}
+
+	// Send task message to worker with trace context
+	msg := &Message{
+		ID:           uuid.New().String(),
+		Type:         MessageTypeTask,
+		From:         o.id,
+		To:           worker.AgentID,
+		Content:      task,
+		CreatedAt:    time.Now(),
+		TraceContext: msgTraceContext,
+	}
+
+	// Add trace info to span
+	span.SetAttributes(
+		attribute.String("trace.propagated_root_id", msgTraceContext.RootTraceID),
+		attribute.String("trace.execution_id", msgTraceContext.ExecutionID),
+	)
+
+	// Start protocol send span
+	ctx, sendSpan := observability.StartProtocolSpan(ctx, "send", string(msg.Type), msg.ID)
+	err = o.protocol.Send(ctx, msg)
+	observability.EndSpan(sendSpan, err)
+
+	return err
 }
 
 // findWorkerForTask finds the best worker for a task
@@ -416,14 +626,22 @@ func (o *Orchestrator) checkDependencies(task *Task, completed map[string]bool) 
 
 // waitForTaskCompletion waits for a task to complete
 func (o *Orchestrator) waitForTaskCompletion(ctx context.Context, task *Task) (interface{}, error) {
+	// Start wait span
+	ctx, span := observability.StartWorkerSpan(ctx, task.AssignedTo, "wait_completion", task.ID)
+	defer span.End()
+
 	timeout := time.After(o.config.TaskTimeout)
 	ticker := time.NewTicker(100 * time.Millisecond) // Check more frequently
 	defer ticker.Stop()
 
+	startTime := time.Now()
+
 	for {
 		select {
 		case <-timeout:
-			return nil, fmt.Errorf("task %s timed out after %v", task.ID, o.config.TaskTimeout)
+			err := fmt.Errorf("task %s timed out after %v", task.ID, o.config.TaskTimeout)
+			observability.RecordError(span, err, "timeout")
+			return nil, err
 		case <-ticker.C:
 			// Check for result messages from workers
 			messages, err := o.protocol.Receive(ctx, o.id)
@@ -432,13 +650,19 @@ func (o *Orchestrator) waitForTaskCompletion(ctx context.Context, task *Task) (i
 					if msg.Type == MessageTypeResult && msg.InReplyTo == task.ID {
 						// Worker completed the task
 						o.taskLedger.CompleteTask(ctx, task.ID, msg.Content)
+						span.SetAttributes(
+							attribute.Int64("wait.duration_ms", time.Since(startTime).Milliseconds()),
+							attribute.String("completion.status", "success"),
+						)
 						return msg.Content, nil
 					}
 					if msg.Type == MessageTypeError && msg.InReplyTo == task.ID {
 						// Worker failed the task
 						errMsg := fmt.Sprintf("%v", msg.Content)
 						o.taskLedger.FailTask(ctx, task.ID, fmt.Errorf("%s", errMsg))
-						return nil, fmt.Errorf("task failed: %s", errMsg)
+						err := fmt.Errorf("task failed: %s", errMsg)
+						observability.RecordError(span, err, "worker_error")
+						return nil, err
 					}
 				}
 			}
@@ -450,13 +674,20 @@ func (o *Orchestrator) waitForTaskCompletion(ctx context.Context, task *Task) (i
 			}
 
 			if currentTask.Status == TaskStatusCompleted {
+				span.SetAttributes(
+					attribute.Int64("wait.duration_ms", time.Since(startTime).Milliseconds()),
+					attribute.String("completion.status", "success"),
+				)
 				return currentTask.Output, nil
 			}
 
 			if currentTask.Status == TaskStatusFailed {
-				return nil, fmt.Errorf("task failed: %s", currentTask.Error)
+				err := fmt.Errorf("task failed: %s", currentTask.Error)
+				observability.RecordError(span, err, "task_failed")
+				return nil, err
 			}
 		case <-ctx.Done():
+			observability.RecordError(span, ctx.Err(), "context_cancelled")
 			return nil, ctx.Err()
 		}
 	}

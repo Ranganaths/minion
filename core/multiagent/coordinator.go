@@ -129,7 +129,7 @@ func (c *Coordinator) RegisterWorker(ctx context.Context, worker *WorkerAgent) e
 	metadata := worker.GetMetadata()
 
 	// Register with orchestrator
-	if err := c.orchestrator.RegisterWorker(metadata); err != nil {
+	if err := c.orchestrator.RegisterWorker(ctx, metadata); err != nil {
 		return fmt.Errorf("failed to register with orchestrator: %w", err)
 	}
 
@@ -163,7 +163,7 @@ func (c *Coordinator) UnregisterWorker(ctx context.Context, agentID string) erro
 	}
 
 	// Unregister from orchestrator
-	if err := c.orchestrator.UnregisterWorker(agentID); err != nil {
+	if err := c.orchestrator.UnregisterWorker(ctx, agentID); err != nil {
 		return fmt.Errorf("failed to unregister from orchestrator: %w", err)
 	}
 

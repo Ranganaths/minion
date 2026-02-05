@@ -52,6 +52,13 @@ Minion is a standalone framework that can be used in any Go project for building
 - 🛡️ **Safe Type Assertions** - Helper functions to prevent runtime panics
 - ⚡ **Goroutine Safety** - Context-aware streaming with proper cleanup
 
+### Observability & Tracing (NEW!)
+- 📊 **OpenTelemetry Tracing** - Full distributed tracing with Jaeger/OTLP export
+- 📈 **Prometheus Metrics** - Production-ready metrics with HTTP endpoint
+- 🔍 **Agent Traceability** - Track every agent execution, LLM call, and tool invocation
+- 📉 **Multi-Agent Observability** - Trace orchestrator planning, worker assignment, task completion
+- 🎯 **Graceful Shutdown** - Proper span flushing before process exit
+
 ### Debug & Time-Travel (NEW!)
 - 🔍 **Execution Snapshots** - Capture complete state at checkpoints
 - ⏪ **Time-Travel Debugging** - Navigate forward/backward through execution
@@ -253,6 +260,59 @@ for _, activity := range activities {
 }
 ```
 
+### OpenTelemetry Tracing
+
+Enable distributed tracing for full agent observability:
+
+```go
+import "github.com/Ranganaths/minion/observability"
+
+// Initialize tracing
+err := observability.InitGlobalTracer(observability.TracingConfig{
+    Enabled:       true,
+    ServiceName:   "my-agent-service",
+    Environment:   "production",
+    Exporter:      "otlp",  // or "jaeger", "stdout"
+    OTLPEndpoint:  "localhost:4317",
+    SamplingRatio: 0.1,
+})
+if err != nil {
+    log.Fatal(err)
+}
+defer observability.GracefulShutdown(30 * time.Second)
+
+// All agent executions are now traced automatically!
+output, err := framework.Execute(ctx, agentID, input)
+// Traces include: agent.execute, llm.openai.gpt-4, tool.*, etc.
+```
+
+### Prometheus Metrics
+
+Expose production metrics via HTTP endpoint:
+
+```go
+import "github.com/Ranganaths/minion/metrics"
+
+// Initialize Prometheus metrics
+promMetrics := metrics.InitPrometheusMetrics(&metrics.PrometheusConfig{
+    Namespace:              "minion",
+    EnableGoCollector:      true,
+    EnableProcessCollector: true,
+})
+
+// Expose /metrics endpoint
+http.Handle("/metrics", metrics.MetricsHandler())
+http.ListenAndServe(":9090", nil)
+```
+
+**Available Metrics:**
+- `minion_agent_executions_total` - Agent execution count
+- `minion_llm_calls_total` - LLM API calls
+- `minion_llm_tokens_total` - Total tokens used
+- `minion_llm_call_duration_seconds` - LLM latency histogram
+- `minion_multiagent_tasks_total` - Multi-agent task count
+- `minion_tool_executions_total` - Tool invocation count
+
 ## 🔌 LLM Providers
 
 ### OpenAI
@@ -387,6 +447,10 @@ Check out the `examples/` directory for 13 comprehensive examples:
 ### Integration Examples
 - **`examples/domain_tools/`** - Domain-specific tools (marketing, sales)
 - **`examples/tupleleap_example/`** - TupleLeap LLM provider integration
+
+### Observability Examples
+- **`examples/tracing/`** - Agent tracing and trace analysis API
+- **`examples/observability/`** - OpenTelemetry + Prometheus production setup
 
 Run an example:
 
@@ -576,6 +640,9 @@ go run ./examples/debug-timetravel/main.go tui
 ## 🛣️ Roadmap
 
 ### Completed ✅
+- [x] **OpenTelemetry Tracing** - Full distributed tracing with Jaeger/OTLP export
+- [x] **Prometheus Metrics** - Production metrics with HTTP endpoint
+- [x] **Agent Traceability** - Track every execution, LLM call, and tool invocation
 - [x] **Debug & Time-Travel** - Execution snapshots, timeline navigation, what-if analysis
 - [x] **Debug Studio TUI** - Interactive terminal debugger with Bubble Tea
 - [x] **Debug API Server** - HTTP API for debugging and time-travel operations

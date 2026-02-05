@@ -1,7 +1,7 @@
 # Minion Framework - Roadmap
 
-**Last Updated**: December 2024
-**Current Version**: v5.1
+**Last Updated**: February 2025
+**Current Version**: v5.2
 **Production Readiness Score**: 100/100
 
 ---
@@ -14,6 +14,7 @@ The Minion framework has achieved full production readiness with comprehensive f
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| v5.2 | Feb 2025 | OpenTelemetry tracing, Prometheus metrics, agent traceability, production observability |
 | v5.1 | Dec 2024 | Debug & Time-Travel system, execution snapshots, Debug Studio TUI |
 | v5.0 | Dec 2024 | LLM validation, health checks, race condition fixes, safe type assertions |
 | v4.0 | Dec 2024 | Resilience package, health monitoring, validation framework |
@@ -73,6 +74,14 @@ The Minion framework has achieved full production readiness with comprehensive f
 - [x] **Errors**: Typed errors with context
 - [x] **Config**: Non-panicking environment helpers
 
+### Observability & Tracing (v5.2)
+- [x] **OpenTelemetry Tracing** - Full distributed tracing with Jaeger/OTLP export
+- [x] **Prometheus Metrics** - Production-ready metrics with HTTP endpoint
+- [x] **Agent Traceability** - Track every execution, LLM call, and tool invocation
+- [x] **Multi-Agent Observability** - Trace orchestrator planning, worker assignment, task completion
+- [x] **Graceful Shutdown** - Proper span flushing before process exit
+- [x] **Production Readiness Checklist** - Comprehensive deployment guide
+
 ### Storage
 - [x] In-memory storage (development)
 - [x] PostgreSQL storage with pgvector
@@ -90,11 +99,12 @@ The Minion framework has achieved full production readiness with comprehensive f
 - [x] **Debug Studio TUI** - Interactive terminal UI with Bubble Tea
 
 ### Documentation & Examples
-- [x] 15 comprehensive examples (including debug-timetravel)
+- [x] 16 comprehensive examples (including debug-timetravel, tracing)
 - [x] Quick reference guide
-- [x] Production readiness guide
+- [x] Production readiness guide (PRODUCTION_READINESS.md)
 - [x] LLM providers guide
-- [x] Tutorials
+- [x] Tutorials (20+ tutorials including observability)
+- [x] Observability tutorials (OpenTelemetry, Prometheus, Production setup)
 
 ---
 
@@ -117,11 +127,11 @@ The Minion framework has achieved full production readiness with comprehensive f
 - [ ] Unified provider configuration
 
 ### v7.0 - Advanced Observability (Q2 2025)
-- [ ] Jaeger UI integration
+- [x] Jaeger/OTLP integration (completed in v5.2)
 - [ ] Grafana dashboard templates
 - [ ] Cost tracking dashboard
 - [ ] Performance analytics
-- [ ] Distributed tracing visualization
+- [x] Distributed tracing visualization (completed in v5.2)
 
 ### v8.0 - Enterprise Features (Q2 2025)
 - [ ] Web UI for agent management

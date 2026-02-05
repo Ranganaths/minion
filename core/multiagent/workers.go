@@ -11,6 +11,7 @@ import (
 
 	"github.com/Ranganaths/minion/observability"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // WorkerAgent represents a specialized worker agent
@@ -129,15 +130,23 @@ func (w *WorkerAgent) handleTaskMessage(ctx context.Context, msg *Message) {
 		taskBytes, _ := json.Marshal(v)
 		task = &Task{}
 		if err := json.Unmarshal(taskBytes, task); err != nil {
-			w.sendErrorResponse(ctx, msg, fmt.Errorf("invalid task format: %w", err), "")
+			w.sendErrorResponse(ctx, msg, fmt.Errorf("invalid task format: %w", err), "", msg.TraceContext)
 			return
 		}
 	default:
-		w.sendErrorResponse(ctx, msg, fmt.Errorf("invalid task format: unexpected type %T", msg.Content), "")
+		w.sendErrorResponse(ctx, msg, fmt.Errorf("invalid task format: unexpected type %T", msg.Content), "", msg.TraceContext)
 		return
 	}
 
-	// Start tracing span
+	// Extract trace context from message for distributed tracing
+	var traceContext *TraceContext
+	if msg.TraceContext != nil {
+		traceContext = msg.TraceContext
+	} else if task.TraceContext != nil {
+		traceContext = task.TraceContext
+	}
+
+	// Start tracing span with parent context if available
 	capability := "unknown"
 	if len(w.metadata.Capabilities) > 0 {
 		capability = w.metadata.Capabilities[0]
@@ -145,9 +154,43 @@ func (w *WorkerAgent) handleTaskMessage(ctx context.Context, msg *Message) {
 	ctx, span := w.tracer.StartWorkerSpan(ctx, w.metadata.AgentID, capability, task.ID)
 	defer w.tracer.EndSpan(span, nil)
 
+	// Add trace correlation attributes for agent traceability
+	if traceContext != nil {
+		span.SetAttributes(
+			attribute.String(observability.AttrRootTraceID, traceContext.RootTraceID),
+			attribute.String(observability.AttrParentSpanID, traceContext.ParentSpanID),
+			attribute.String(observability.AttrOrchestratorID, traceContext.OrchestratorID),
+			attribute.String(observability.AttrExecutionID, traceContext.ExecutionID),
+		)
+
+		// Add baggage items as attributes
+		if traceContext.Baggage != nil {
+			for key, value := range traceContext.Baggage {
+				span.SetAttributes(attribute.String("baggage."+key, value))
+			}
+		}
+	}
+
 	// Update agent status
 	w.metadata.Status = StatusBusy
 	w.metrics.RecordMultiagentWorkerBusy()
+
+	// Record worker started event
+	RecordExecutionEvent(ctx, &ExecutionEvent{
+		ID:           uuid.New().String(),
+		Type:         EventTypeWorkerStarted,
+		TaskID:       task.ID,
+		AgentID:      w.metadata.AgentID,
+		AgentRole:    w.metadata.Role,
+		Action:       "start_task",
+		Input:        task.Input,
+		Timestamp:    time.Now(),
+		TraceContext: traceContext,
+		Metadata: map[string]interface{}{
+			"capability": capability,
+			"task_name":  task.Name,
+		},
+	})
 
 	// Track processing duration
 	start := time.Now()
@@ -170,11 +213,48 @@ func (w *WorkerAgent) handleTaskMessage(ctx context.Context, msg *Message) {
 	// Send response - use task.ID for InReplyTo so orchestrator can match it
 	if err != nil {
 		w.metrics.RecordMultiagentError("worker", "task_processing_failed")
-		w.sendErrorResponse(ctx, msg, err, task.ID)
+
+		// Record worker failed event
+		RecordExecutionEvent(ctx, &ExecutionEvent{
+			ID:           uuid.New().String(),
+			Type:         EventTypeTaskFailed,
+			TaskID:       task.ID,
+			AgentID:      w.metadata.AgentID,
+			AgentRole:    w.metadata.Role,
+			Action:       "task_failed",
+			Error:        err.Error(),
+			Duration:     duration,
+			Timestamp:    time.Now(),
+			TraceContext: traceContext,
+			Metadata: map[string]interface{}{
+				"capability": capability,
+				"task_name":  task.Name,
+			},
+		})
+
+		w.sendErrorResponse(ctx, msg, err, task.ID, traceContext)
 		return
 	}
 
-	w.sendSuccessResponse(ctx, msg, result, task.ID)
+	// Record worker completed event
+	RecordExecutionEvent(ctx, &ExecutionEvent{
+		ID:           uuid.New().String(),
+		Type:         EventTypeWorkerCompleted,
+		TaskID:       task.ID,
+		AgentID:      w.metadata.AgentID,
+		AgentRole:    w.metadata.Role,
+		Action:       "task_completed",
+		Output:       result,
+		Duration:     duration,
+		Timestamp:    time.Now(),
+		TraceContext: traceContext,
+		Metadata: map[string]interface{}{
+			"capability": capability,
+			"task_name":  task.Name,
+		},
+	})
+
+	w.sendSuccessResponse(ctx, msg, result, task.ID, traceContext)
 }
 
 // handleDelegateMessage handles a delegate message
@@ -183,8 +263,22 @@ func (w *WorkerAgent) handleDelegateMessage(ctx context.Context, msg *Message) {
 	w.handleTaskMessage(ctx, msg)
 }
 
-// sendSuccessResponse sends a success response
-func (w *WorkerAgent) sendSuccessResponse(ctx context.Context, originalMsg *Message, result interface{}, taskID string) {
+// sendSuccessResponse sends a success response with trace context propagation
+func (w *WorkerAgent) sendSuccessResponse(ctx context.Context, originalMsg *Message, result interface{}, taskID string, traceContext *TraceContext) {
+	// Create response trace context preserving the chain
+	var responseTraceContext *TraceContext
+	if traceContext != nil {
+		responseTraceContext = &TraceContext{
+			TraceID:        w.tracer.GetTraceID(ctx),
+			SpanID:         w.tracer.GetSpanID(ctx),
+			RootTraceID:    traceContext.RootTraceID,
+			ParentSpanID:   traceContext.SpanID, // Link back to parent
+			OrchestratorID: traceContext.OrchestratorID,
+			ExecutionID:    traceContext.ExecutionID,
+			Baggage:        traceContext.Baggage,
+		}
+	}
+
 	response := &Message{
 		ID:        uuid.New().String(),
 		Type:      MessageTypeResult,
@@ -195,14 +289,32 @@ func (w *WorkerAgent) sendSuccessResponse(ctx context.Context, originalMsg *Mess
 		Metadata: map[string]interface{}{
 			"original_message_id": originalMsg.ID,
 		},
-		CreatedAt: time.Now(),
+		CreatedAt:    time.Now(),
+		TraceContext: responseTraceContext,
 	}
 
-	w.protocol.Send(ctx, response)
+	if err := w.protocol.Send(ctx, response); err != nil {
+		// Log the error but don't fail - the orchestrator will timeout if needed
+		w.metrics.RecordMultiagentError("worker", "send_response_failed")
+	}
 }
 
-// sendErrorResponse sends an error response
-func (w *WorkerAgent) sendErrorResponse(ctx context.Context, originalMsg *Message, err error, taskID string) {
+// sendErrorResponse sends an error response with trace context propagation
+func (w *WorkerAgent) sendErrorResponse(ctx context.Context, originalMsg *Message, err error, taskID string, traceContext *TraceContext) {
+	// Create response trace context preserving the chain
+	var responseTraceContext *TraceContext
+	if traceContext != nil {
+		responseTraceContext = &TraceContext{
+			TraceID:        w.tracer.GetTraceID(ctx),
+			SpanID:         w.tracer.GetSpanID(ctx),
+			RootTraceID:    traceContext.RootTraceID,
+			ParentSpanID:   traceContext.SpanID, // Link back to parent
+			OrchestratorID: traceContext.OrchestratorID,
+			ExecutionID:    traceContext.ExecutionID,
+			Baggage:        traceContext.Baggage,
+		}
+	}
+
 	response := &Message{
 		ID:        uuid.New().String(),
 		Type:      MessageTypeError,
@@ -213,10 +325,14 @@ func (w *WorkerAgent) sendErrorResponse(ctx context.Context, originalMsg *Messag
 		Metadata: map[string]interface{}{
 			"original_message_id": originalMsg.ID,
 		},
-		CreatedAt: time.Now(),
+		CreatedAt:    time.Now(),
+		TraceContext: responseTraceContext,
 	}
 
-	w.protocol.Send(ctx, response)
+	if err := w.protocol.Send(ctx, response); err != nil {
+		// Log the error but don't fail - the orchestrator will timeout if needed
+		w.metrics.RecordMultiagentError("worker", "send_error_response_failed")
+	}
 }
 
 // GetMetadata returns the agent metadata
@@ -226,15 +342,44 @@ func (w *WorkerAgent) GetMetadata() *AgentMetadata {
 
 // --- Specialized Worker Implementations ---
 
+// WorkerConfig holds configuration for worker implementations
+type WorkerConfig struct {
+	Model       string  `json:"model"`       // LLM model to use (empty = provider default)
+	Temperature float64 `json:"temperature"` // Temperature for generation
+	MaxTokens   int     `json:"max_tokens"`  // Maximum tokens for response
+}
+
+// DefaultWorkerConfig returns default worker configuration
+func DefaultWorkerConfig() *WorkerConfig {
+	return &WorkerConfig{
+		Model:       "", // Use provider's default
+		Temperature: 0.3,
+		MaxTokens:   2000,
+	}
+}
+
 // CoderWorker handles code generation and execution tasks
 type CoderWorker struct {
 	llmProvider LLMProvider
+	config      *WorkerConfig
 }
 
 // NewCoderWorker creates a new coder worker
 func NewCoderWorker(llmProvider LLMProvider) *CoderWorker {
 	return &CoderWorker{
 		llmProvider: llmProvider,
+		config:      DefaultWorkerConfig(),
+	}
+}
+
+// NewCoderWorkerWithConfig creates a new coder worker with custom config
+func NewCoderWorkerWithConfig(llmProvider LLMProvider, config *WorkerConfig) *CoderWorker {
+	if config == nil {
+		config = DefaultWorkerConfig()
+	}
+	return &CoderWorker{
+		llmProvider: llmProvider,
+		config:      config,
 	}
 }
 
@@ -251,18 +396,55 @@ Output only the code without explanations unless specifically requested.`
 		SystemPrompt: systemPrompt,
 		UserPrompt:   userPrompt,
 		Temperature:  0.2,
-		MaxTokens:    2000,
-		Model:        "gpt-4",
+		MaxTokens:    c.config.MaxTokens,
+		Model:        c.config.Model,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("code generation failed: %w", err)
 	}
 
+	// Detect programming language from code content
+	language := detectProgrammingLanguage(resp.Text)
+
 	return map[string]interface{}{
 		"code":        resp.Text,
-		"language":    "auto-detected",
+		"language":    language,
 		"tokens_used": resp.TokensUsed,
+		"model":       resp.Model,
 	}, nil
+}
+
+// detectProgrammingLanguage attempts to detect the programming language from code
+func detectProgrammingLanguage(code string) string {
+	code = strings.TrimSpace(code)
+
+	// Check for common language indicators
+	switch {
+	case strings.HasPrefix(code, "package ") && strings.Contains(code, "func "):
+		return "go"
+	case strings.HasPrefix(code, "#!/usr/bin/python") || strings.HasPrefix(code, "#!/usr/bin/env python"):
+		return "python"
+	case strings.Contains(code, "def ") && strings.Contains(code, ":"):
+		return "python"
+	case strings.HasPrefix(code, "#!/bin/bash") || strings.HasPrefix(code, "#!/bin/sh"):
+		return "bash"
+	case strings.Contains(code, "function ") && strings.Contains(code, "const "):
+		return "javascript"
+	case strings.Contains(code, "interface ") && strings.Contains(code, ": "):
+		return "typescript"
+	case strings.Contains(code, "public class ") || strings.Contains(code, "private class "):
+		return "java"
+	case strings.Contains(code, "#include") && strings.Contains(code, "int main"):
+		return "c"
+	case strings.Contains(code, "#include") && strings.Contains(code, "std::"):
+		return "cpp"
+	case strings.HasPrefix(code, "<?php"):
+		return "php"
+	case strings.Contains(code, "fn ") && strings.Contains(code, "let "):
+		return "rust"
+	default:
+		return "unknown"
+	}
 }
 
 // GetCapabilities returns coder capabilities
@@ -278,39 +460,90 @@ func (c *CoderWorker) GetName() string {
 // AnalystWorker handles data analysis tasks
 type AnalystWorker struct {
 	llmProvider LLMProvider
+	config      *WorkerConfig
 }
 
 // NewAnalystWorker creates a new analyst worker
 func NewAnalystWorker(llmProvider LLMProvider) *AnalystWorker {
 	return &AnalystWorker{
 		llmProvider: llmProvider,
+		config:      DefaultWorkerConfig(),
+	}
+}
+
+// NewAnalystWorkerWithConfig creates a new analyst worker with custom config
+func NewAnalystWorkerWithConfig(llmProvider LLMProvider, config *WorkerConfig) *AnalystWorker {
+	if config == nil {
+		config = DefaultWorkerConfig()
+	}
+	return &AnalystWorker{
+		llmProvider: llmProvider,
+		config:      config,
 	}
 }
 
 // HandleTask handles data analysis tasks
 func (a *AnalystWorker) HandleTask(ctx context.Context, task *Task) (interface{}, error) {
 	systemPrompt := `You are an expert data analyst. Analyze data and provide insights.
-Provide clear explanations and actionable recommendations.`
+Provide clear explanations and actionable recommendations.
+Include a confidence assessment (high/medium/low) based on data quality and completeness.`
 
-	userPrompt := fmt.Sprintf("Task: %s\n\nDescription: %s\n\nData: %v\n\nProvide your analysis.",
+	userPrompt := fmt.Sprintf("Task: %s\n\nDescription: %s\n\nData: %v\n\nProvide your analysis with confidence assessment.",
 		task.Name, task.Description, task.Input)
 
 	resp, err := a.llmProvider.GenerateCompletion(ctx, &CompletionRequest{
 		SystemPrompt: systemPrompt,
 		UserPrompt:   userPrompt,
-		Temperature:  0.3,
-		MaxTokens:    1500,
-		Model:        "gpt-4",
+		Temperature:  a.config.Temperature,
+		MaxTokens:    a.config.MaxTokens,
+		Model:        a.config.Model,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("analysis failed: %w", err)
 	}
 
+	// Extract confidence from the response
+	confidence := extractConfidenceFromText(resp.Text)
+
 	return map[string]interface{}{
 		"analysis":    resp.Text,
-		"confidence":  "high",
+		"confidence":  confidence,
 		"tokens_used": resp.TokensUsed,
+		"model":       resp.Model,
 	}, nil
+}
+
+// extractConfidenceFromText extracts confidence level from analysis text
+func extractConfidenceFromText(text string) string {
+	lowerText := strings.ToLower(text)
+
+	// Look for explicit confidence mentions
+	confidencePatterns := []struct {
+		pattern string
+		level   string
+	}{
+		{"confidence: high", "high"},
+		{"confidence: medium", "medium"},
+		{"confidence: low", "low"},
+		{"high confidence", "high"},
+		{"medium confidence", "medium"},
+		{"low confidence", "low"},
+		{"confident", "high"},
+		{"uncertain", "low"},
+		{"limited data", "low"},
+		{"insufficient", "low"},
+		{"strong evidence", "high"},
+		{"weak evidence", "low"},
+	}
+
+	for _, p := range confidencePatterns {
+		if strings.Contains(lowerText, p.pattern) {
+			return p.level
+		}
+	}
+
+	// Default to medium if no explicit confidence found
+	return "medium"
 }
 
 // GetCapabilities returns analyst capabilities
@@ -326,12 +559,25 @@ func (a *AnalystWorker) GetName() string {
 // ResearcherWorker handles research and information gathering tasks
 type ResearcherWorker struct {
 	llmProvider LLMProvider
+	config      *WorkerConfig
 }
 
 // NewResearcherWorker creates a new researcher worker
 func NewResearcherWorker(llmProvider LLMProvider) *ResearcherWorker {
 	return &ResearcherWorker{
 		llmProvider: llmProvider,
+		config:      DefaultWorkerConfig(),
+	}
+}
+
+// NewResearcherWorkerWithConfig creates a new researcher worker with custom config
+func NewResearcherWorkerWithConfig(llmProvider LLMProvider, config *WorkerConfig) *ResearcherWorker {
+	if config == nil {
+		config = DefaultWorkerConfig()
+	}
+	return &ResearcherWorker{
+		llmProvider: llmProvider,
+		config:      config,
 	}
 }
 
@@ -346,9 +592,9 @@ Include sources and evidence for your claims.`
 	resp, err := r.llmProvider.GenerateCompletion(ctx, &CompletionRequest{
 		SystemPrompt: systemPrompt,
 		UserPrompt:   userPrompt,
-		Temperature:  0.4,
-		MaxTokens:    2000,
-		Model:        "gpt-4",
+		Temperature:  r.config.Temperature,
+		MaxTokens:    r.config.MaxTokens,
+		Model:        r.config.Model,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("research failed: %w", err)
@@ -361,6 +607,7 @@ Include sources and evidence for your claims.`
 		"findings":    resp.Text,
 		"sources":     sources,
 		"tokens_used": resp.TokensUsed,
+		"model":       resp.Model,
 	}, nil
 }
 
@@ -420,12 +667,28 @@ func (r *ResearcherWorker) GetName() string {
 // WriterWorker handles content creation and writing tasks
 type WriterWorker struct {
 	llmProvider LLMProvider
+	config      *WorkerConfig
 }
 
 // NewWriterWorker creates a new writer worker
 func NewWriterWorker(llmProvider LLMProvider) *WriterWorker {
+	config := DefaultWorkerConfig()
+	config.Temperature = 0.7 // Higher creativity for writing
 	return &WriterWorker{
 		llmProvider: llmProvider,
+		config:      config,
+	}
+}
+
+// NewWriterWorkerWithConfig creates a new writer worker with custom config
+func NewWriterWorkerWithConfig(llmProvider LLMProvider, config *WorkerConfig) *WriterWorker {
+	if config == nil {
+		config = DefaultWorkerConfig()
+		config.Temperature = 0.7
+	}
+	return &WriterWorker{
+		llmProvider: llmProvider,
+		config:      config,
 	}
 }
 
@@ -440,19 +703,30 @@ Adapt your style to the target audience and purpose.`
 	resp, err := w.llmProvider.GenerateCompletion(ctx, &CompletionRequest{
 		SystemPrompt: systemPrompt,
 		UserPrompt:   userPrompt,
-		Temperature:  0.7,
-		MaxTokens:    2000,
-		Model:        "gpt-4",
+		Temperature:  w.config.Temperature,
+		MaxTokens:    w.config.MaxTokens,
+		Model:        w.config.Model,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("writing failed: %w", err)
 	}
 
+	// Count words properly by splitting on whitespace
+	wordCount := countWords(resp.Text)
+
 	return map[string]interface{}{
 		"content":     resp.Text,
-		"word_count":  len(resp.Text) / 5, // Rough estimate
+		"word_count":  wordCount,
 		"tokens_used": resp.TokensUsed,
+		"model":       resp.Model,
 	}, nil
+}
+
+// countWords counts the number of words in a text
+func countWords(text string) int {
+	// Split on whitespace and count non-empty parts
+	words := strings.Fields(text)
+	return len(words)
 }
 
 // GetCapabilities returns writer capabilities
@@ -468,29 +742,43 @@ func (w *WriterWorker) GetName() string {
 // ReviewerWorker handles review and quality assurance tasks
 type ReviewerWorker struct {
 	llmProvider LLMProvider
+	config      *WorkerConfig
 }
 
 // NewReviewerWorker creates a new reviewer worker
 func NewReviewerWorker(llmProvider LLMProvider) *ReviewerWorker {
 	return &ReviewerWorker{
 		llmProvider: llmProvider,
+		config:      DefaultWorkerConfig(),
+	}
+}
+
+// NewReviewerWorkerWithConfig creates a new reviewer worker with custom config
+func NewReviewerWorkerWithConfig(llmProvider LLMProvider, config *WorkerConfig) *ReviewerWorker {
+	if config == nil {
+		config = DefaultWorkerConfig()
+	}
+	return &ReviewerWorker{
+		llmProvider: llmProvider,
+		config:      config,
 	}
 }
 
 // HandleTask handles review tasks
 func (r *ReviewerWorker) HandleTask(ctx context.Context, task *Task) (interface{}, error) {
 	systemPrompt := `You are an expert reviewer. Critically evaluate content, code, or work products.
-Provide constructive feedback and specific recommendations for improvement.`
+Provide constructive feedback and specific recommendations for improvement.
+Include a rating in your review (e.g., "Rating: 8/10" or "Grade: A").`
 
-	userPrompt := fmt.Sprintf("Task: %s\n\nDescription: %s\n\nContent to Review: %v\n\nProvide your review.",
+	userPrompt := fmt.Sprintf("Task: %s\n\nDescription: %s\n\nContent to Review: %v\n\nProvide your review with rating.",
 		task.Name, task.Description, task.Input)
 
 	resp, err := r.llmProvider.GenerateCompletion(ctx, &CompletionRequest{
 		SystemPrompt: systemPrompt,
 		UserPrompt:   userPrompt,
-		Temperature:  0.3,
-		MaxTokens:    1500,
-		Model:        "gpt-4",
+		Temperature:  r.config.Temperature,
+		MaxTokens:    r.config.MaxTokens,
+		Model:        r.config.Model,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("review failed: %w", err)
@@ -503,6 +791,7 @@ Provide constructive feedback and specific recommendations for improvement.`
 		"review":      resp.Text,
 		"rating":      rating,
 		"tokens_used": resp.TokensUsed,
+		"model":       resp.Model,
 	}, nil
 }
 

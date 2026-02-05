@@ -38,6 +38,11 @@
 - [Tutorial 18: LangChain-Style Chains](#tutorial-18-langchain-style-chains)
 - [Tutorial 19: MCP Tool Integration](#tutorial-19-mcp-tool-integration)
 
+### Observability Tutorials (NEW!)
+- [Tutorial 20: OpenTelemetry Tracing](#tutorial-20-opentelemetry-tracing)
+- [Tutorial 21: Prometheus Metrics](#tutorial-21-prometheus-metrics)
+- [Tutorial 22: Production Observability Setup](#tutorial-22-production-observability-setup)
+
 ### Real-World Examples
 - [Example 1: Data Processing Pipeline](#example-1-data-processing-pipeline)
 - [Example 2: Web Scraping Swarm](#example-2-web-scraping-swarm)
@@ -3394,6 +3399,416 @@ for i := 0; i < 5; i++ {
 
 ---
 
+## Tutorial 20: OpenTelemetry Tracing
+
+**Time: 20 minutes**
+**Goal: Add distributed tracing to your agents**
+
+### Step 1: Initialize Tracing
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    "time"
+
+    "github.com/Ranganaths/minion/core"
+    "github.com/Ranganaths/minion/models"
+    "github.com/Ranganaths/minion/observability"
+    "github.com/Ranganaths/minion/storage"
+)
+
+func main() {
+    ctx := context.Background()
+
+    // Initialize OpenTelemetry tracing
+    err := observability.InitGlobalTracer(observability.TracingConfig{
+        Enabled:       true,
+        ServiceName:   "my-agent-service",
+        Environment:   "development",
+        Exporter:      "jaeger",  // Options: "jaeger", "otlp", "stdout"
+        JaegerURL:     "http://localhost:14268/api/traces",
+        SamplingRatio: 1.0,  // Sample all traces in development
+    })
+    if err != nil {
+        log.Fatalf("Failed to initialize tracing: %v", err)
+    }
+    defer observability.GracefulShutdown(30 * time.Second)
+
+    fmt.Println("✓ Tracing initialized")
+    fmt.Println("  View traces at: http://localhost:16686")
+
+    // Create framework - all executions are now traced!
+    framework := core.NewFramework(
+        core.WithStorage(storage.NewInMemory()),
+        core.WithLLMProvider(yourLLMProvider),
+    )
+    defer framework.Close()
+
+    // Execute agent - traces are captured automatically
+    output, err := framework.Execute(ctx, agentID, &models.Input{
+        Raw:  "What is 2 + 2?",
+        Type: "text",
+    })
+
+    // Trace ID is included in output metadata
+    if traceID, ok := output.Metadata["trace_id"].(string); ok {
+        fmt.Printf("Trace ID: %s\n", traceID)
+        fmt.Printf("View: http://localhost:16686/trace/%s\n", traceID)
+    }
+}
+```
+
+### Step 2: Start Jaeger
+
+```bash
+# Start Jaeger with Docker
+docker run -d --name jaeger \
+  -p 16686:16686 \
+  -p 14268:14268 \
+  jaegertracing/all-in-one:latest
+
+# Access Jaeger UI at http://localhost:16686
+```
+
+### Step 3: View Traces
+
+Each agent execution creates spans for:
+- `agent.execute` - Overall execution
+- `agent.process_input` - Input processing
+- `llm.<provider>.<model>` - LLM API calls
+- `tool.<name>` - Tool invocations
+- `agent.process_output` - Output processing
+
+### What You Learned
+- ✅ How to initialize OpenTelemetry tracing
+- ✅ How to view traces in Jaeger UI
+- ✅ What spans are captured automatically
+- ✅ How to access trace IDs in output
+
+**Next:** [Tutorial 21: Prometheus Metrics](#tutorial-21-prometheus-metrics)
+
+---
+
+## Tutorial 21: Prometheus Metrics
+
+**Time: 20 minutes**
+**Goal: Expose production metrics via HTTP endpoint**
+
+### Step 1: Initialize Prometheus
+
+```go
+package main
+
+import (
+    "log"
+    "net/http"
+
+    "github.com/Ranganaths/minion/metrics"
+)
+
+func main() {
+    // Initialize Prometheus metrics
+    promConfig := metrics.DefaultPrometheusConfig()
+    promConfig.Namespace = "minion"
+    promConfig.EnableGoCollector = true       // Go runtime metrics
+    promConfig.EnableProcessCollector = true  // Process metrics
+
+    promMetrics := metrics.InitPrometheusMetrics(promConfig)
+
+    // Expose /metrics endpoint
+    http.Handle("/metrics", promMetrics.Handler())
+
+    log.Println("Metrics available at http://localhost:9090/metrics")
+    log.Fatal(http.ListenAndServe(":9090", nil))
+}
+```
+
+### Step 2: Available Metrics
+
+**Agent Metrics:**
+```
+# Total agent executions
+minion_agent_executions_total{agent_id="..."}
+
+# Execution errors
+minion_agent_execution_errors_total{agent_id="..."}
+
+# Execution duration histogram
+minion_agent_execution_duration_seconds{agent_id="..."}
+```
+
+**LLM Metrics:**
+```
+# Total LLM API calls
+minion_llm_calls_total{provider="openai", model="gpt-4"}
+
+# Tokens used
+minion_llm_tokens_total{provider="openai", model="gpt-4"}
+
+# Call latency
+minion_llm_call_duration_seconds{provider="openai", model="gpt-4"}
+```
+
+**Multi-Agent Metrics:**
+```
+# Orchestrated tasks
+minion_multiagent_tasks_total{orchestrator_id="..."}
+
+# Active workers
+minion_multiagent_active_workers{orchestrator_id="..."}
+
+# Planning duration
+minion_multiagent_planning_duration_seconds{orchestrator_id="..."}
+```
+
+### Step 3: Configure Prometheus
+
+```yaml
+# prometheus.yml
+scrape_configs:
+  - job_name: 'minion'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['localhost:9090']
+```
+
+### Step 4: Create Dashboards
+
+Example Grafana queries:
+
+```promql
+# Request rate
+rate(minion_llm_calls_total[5m])
+
+# Error rate
+rate(minion_agent_execution_errors_total[5m]) /
+rate(minion_agent_executions_total[5m])
+
+# p99 latency
+histogram_quantile(0.99, rate(minion_llm_call_duration_seconds_bucket[5m]))
+
+# Token usage rate
+rate(minion_llm_tokens_total[5m])
+```
+
+### What You Learned
+- ✅ How to initialize Prometheus metrics
+- ✅ Available metric types and labels
+- ✅ How to configure Prometheus scraping
+- ✅ Example Grafana queries
+
+**Next:** [Tutorial 22: Production Observability Setup](#tutorial-22-production-observability-setup)
+
+---
+
+## Tutorial 22: Production Observability Setup
+
+**Time: 30 minutes**
+**Goal: Complete production observability stack**
+
+### Step 1: Combined Setup
+
+```go
+package main
+
+import (
+    "context"
+    "log"
+    "net/http"
+    "os"
+    "os/signal"
+    "syscall"
+    "time"
+
+    "github.com/Ranganaths/minion/config"
+    "github.com/Ranganaths/minion/core"
+    "github.com/Ranganaths/minion/errors"
+    "github.com/Ranganaths/minion/health"
+    "github.com/Ranganaths/minion/metrics"
+    "github.com/Ranganaths/minion/observability"
+    "github.com/Ranganaths/minion/storage"
+)
+
+func main() {
+    ctx := context.Background()
+
+    // ========================================
+    // 1. Initialize Tracing
+    // ========================================
+    tracingConfig := observability.TracingConfig{
+        Enabled:       true,
+        ServiceName:   os.Getenv("SERVICE_NAME"),
+        Environment:   os.Getenv("ENVIRONMENT"),
+        Exporter:      "otlp",
+        OTLPEndpoint:  os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+        SamplingRatio: 0.1,  // Sample 10% in production
+    }
+    if err := observability.InitGlobalTracer(tracingConfig); err != nil {
+        log.Fatalf("Failed to init tracing: %v", err)
+    }
+
+    // ========================================
+    // 2. Initialize Metrics
+    // ========================================
+    promMetrics := metrics.InitPrometheusMetrics(&metrics.PrometheusConfig{
+        Namespace:              "minion",
+        EnableGoCollector:      true,
+        EnableProcessCollector: true,
+    })
+
+    // ========================================
+    // 3. Initialize Health Checks
+    // ========================================
+    healthChecker := health.NewChecker(health.Config{
+        Enabled:  true,
+        Interval: 30 * time.Second,
+    })
+
+    // Add health checks
+    healthChecker.AddCheck("database", health.NewPingCheck(
+        "database",
+        func() error { return storage.Ping(ctx) },
+        5*time.Second,
+    ))
+
+    // ========================================
+    // 4. Create HTTP Server
+    // ========================================
+    mux := http.NewServeMux()
+    mux.Handle("/metrics", promMetrics.Handler())
+    mux.HandleFunc("/health", healthChecker.HealthHandler)
+    mux.HandleFunc("/ready", healthChecker.ReadinessHandler)
+    mux.HandleFunc("/live", healthChecker.LivenessHandler)
+
+    server := &http.Server{
+        Addr:    ":8080",
+        Handler: mux,
+    }
+
+    // ========================================
+    // 5. Graceful Shutdown
+    // ========================================
+    errors.RegisterForShutdown("http-server", server)
+    errors.RegisterForShutdown("tracer", observability.GetTracer())
+
+    // Start server
+    go func() {
+        log.Println("Server starting on :8080")
+        if err := server.ListenAndServe(); err != http.ErrServerClosed {
+            log.Fatalf("Server error: %v", err)
+        }
+    }()
+
+    // Wait for shutdown signal
+    sigCh := make(chan os.Signal, 1)
+    signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+    <-sigCh
+
+    // Graceful shutdown
+    log.Println("Shutting down...")
+    shutdownCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+    defer cancel()
+
+    if err := observability.GracefulShutdown(30 * time.Second); err != nil {
+        log.Printf("Tracer shutdown error: %v", err)
+    }
+    if err := server.Shutdown(shutdownCtx); err != nil {
+        log.Printf("Server shutdown error: %v", err)
+    }
+
+    log.Println("Shutdown complete")
+}
+```
+
+### Step 2: Kubernetes Deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minion-agent
+spec:
+  replicas: 3
+  template:
+    spec:
+      containers:
+      - name: agent
+        image: my-agent:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SERVICE_NAME
+          value: "minion-agent"
+        - name: ENVIRONMENT
+          value: "production"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "otel-collector:4317"
+        livenessProbe:
+          httpGet:
+            path: /live
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+```
+
+### Step 3: Alerting Rules
+
+```yaml
+# prometheus-rules.yaml
+groups:
+- name: minion-alerts
+  rules:
+  - alert: HighErrorRate
+    expr: |
+      rate(minion_agent_execution_errors_total[5m]) /
+      rate(minion_agent_executions_total[5m]) > 0.1
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: High agent error rate
+
+  - alert: HighLatency
+    expr: |
+      histogram_quantile(0.99, rate(minion_llm_call_duration_seconds_bucket[5m])) > 30
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: LLM call latency is high
+
+  - alert: WorkerSaturation
+    expr: |
+      minion_multiagent_active_workers > 100
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: Too many active workers
+```
+
+### What You Learned
+- ✅ How to combine tracing, metrics, and health checks
+- ✅ How to set up graceful shutdown
+- ✅ Kubernetes deployment configuration
+- ✅ Alerting rules for production
+
+---
+
 ## Best Practices
 
 ### 1. Start Simple
@@ -3426,8 +3841,10 @@ for i := 0; i < 5; i++ {
 ## Next Steps
 
 - **Read**: [AGENTIC_DESIGN_PATTERNS.md](AGENTIC_DESIGN_PATTERNS.md) for advanced patterns
+- **Read**: [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md) for production checklist
 - **Review**: [PHASE3_COMPLETE.md](PHASE3_COMPLETE.md) for full system capabilities
 - **Explore**: Example applications in `/examples` directory
+- **Try**: `examples/tracing/otel_example.go` for live observability demo
 - **Join**: Community discussions and support
 
 ---

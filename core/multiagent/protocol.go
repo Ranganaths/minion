@@ -34,6 +34,59 @@ type Message struct {
 	Content   interface{}            `json:"content"`
 	Metadata  map[string]interface{} `json:"metadata,omitempty"`
 	CreatedAt time.Time              `json:"created_at"`
+
+	// Trace context for distributed tracing (agent traceability)
+	TraceContext *TraceContext `json:"trace_context,omitempty"`
+}
+
+// TraceContext carries distributed tracing information across agent boundaries
+type TraceContext struct {
+	TraceID           string `json:"trace_id"`            // Current trace ID
+	SpanID            string `json:"span_id"`             // Current span ID
+	RootTraceID       string `json:"root_trace_id"`       // Original orchestrator's trace ID
+	ParentSpanID      string `json:"parent_span_id"`      // Parent span for linking
+	OrchestratorID    string `json:"orchestrator_id"`     // ID of the orchestrating agent
+	ExecutionID       string `json:"execution_id"`        // Unique execution session ID
+	Baggage           map[string]string `json:"baggage,omitempty"` // Additional context propagation
+}
+
+// NewTraceContext creates a new trace context
+func NewTraceContext(traceID, spanID, rootTraceID, orchestratorID string) *TraceContext {
+	return &TraceContext{
+		TraceID:        traceID,
+		SpanID:         spanID,
+		RootTraceID:    rootTraceID,
+		OrchestratorID: orchestratorID,
+		Baggage:        make(map[string]string),
+	}
+}
+
+// WithExecutionID sets the execution ID
+func (tc *TraceContext) WithExecutionID(executionID string) *TraceContext {
+	tc.ExecutionID = executionID
+	return tc
+}
+
+// WithParentSpan sets the parent span ID
+func (tc *TraceContext) WithParentSpan(parentSpanID string) *TraceContext {
+	tc.ParentSpanID = parentSpanID
+	return tc
+}
+
+// SetBaggage adds a baggage item for context propagation
+func (tc *TraceContext) SetBaggage(key, value string) {
+	if tc.Baggage == nil {
+		tc.Baggage = make(map[string]string)
+	}
+	tc.Baggage[key] = value
+}
+
+// GetBaggage retrieves a baggage item
+func (tc *TraceContext) GetBaggage(key string) string {
+	if tc.Baggage == nil {
+		return ""
+	}
+	return tc.Baggage[key]
 }
 
 // Protocol defines the communication protocol for multi-agent systems
@@ -123,6 +176,33 @@ type Task struct {
 	CreatedAt    time.Time              `json:"created_at"`
 	UpdatedAt    time.Time              `json:"updated_at"`
 	CompletedAt  *time.Time             `json:"completed_at,omitempty"`
+
+	// Trace context for agent traceability
+	TraceContext *TraceContext `json:"trace_context,omitempty"`
+}
+
+// SetTraceContext sets the trace context for the task
+func (t *Task) SetTraceContext(tc *TraceContext) {
+	t.TraceContext = tc
+}
+
+// GetRootTraceID returns the root trace ID for correlation
+func (t *Task) GetRootTraceID() string {
+	if t.TraceContext != nil {
+		return t.TraceContext.RootTraceID
+	}
+	return ""
+}
+
+// GetParentTaskID returns the parent task ID from metadata
+func (t *Task) GetParentTaskID() string {
+	if t.Metadata == nil {
+		return ""
+	}
+	if id, ok := t.Metadata["parent_task_id"].(string); ok {
+		return id
+	}
+	return ""
 }
 
 // TaskStatus defines the status of a task
