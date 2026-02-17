@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/Ranganaths/minion/llm"
@@ -11,6 +12,7 @@ import (
 	"github.com/Ranganaths/minion/metrics"
 	"github.com/Ranganaths/minion/models"
 	"github.com/Ranganaths/minion/observability"
+	"github.com/Ranganaths/minion/skills"
 	"github.com/Ranganaths/minion/storage"
 	"github.com/Ranganaths/minion/tools"
 	"github.com/google/uuid"
@@ -27,6 +29,9 @@ type FrameworkImpl struct {
 	// MCP (Model Context Protocol) components
 	mcpClientManager *client.MCPClientManager
 	mcpBridge        *bridge.BridgeRegistry
+
+	// Skills components
+	skillRegistry *skills.InMemorySkillRegistry
 }
 
 // Option is a functional option for configuring the framework
@@ -60,6 +65,22 @@ func WithToolRegistry(registry tools.Registry) Option {
 	}
 }
 
+// WithSkillRegistry sets the skill registry
+func WithSkillRegistry(registry *skills.InMemorySkillRegistry) Option {
+	return func(f *FrameworkImpl) {
+		f.skillRegistry = registry
+	}
+}
+
+// WithSkillsDirectory sets a directory to load skills from at startup
+func WithSkillsDirectory(path string) Option {
+	return func(f *FrameworkImpl) {
+		if f.skillRegistry != nil {
+			_, _ = f.skillRegistry.LoadDirectory(path)
+		}
+	}
+}
+
 // NewFramework creates a new agent framework with the given options
 func NewFramework(opts ...Option) *FrameworkImpl {
 	// Initialize MCP client manager
@@ -69,6 +90,7 @@ func NewFramework(opts ...Option) *FrameworkImpl {
 		behaviorRegistry: NewBehaviorRegistry(),
 		toolRegistry:     tools.NewRegistry(),
 		mcpClientManager: mcpManager,
+		skillRegistry:    skills.NewSkillRegistry(),
 	}
 
 	// Initialize MCP bridge (requires framework reference for tool registration)
@@ -76,6 +98,12 @@ func NewFramework(opts ...Option) *FrameworkImpl {
 
 	for _, opt := range opts {
 		opt(f)
+	}
+
+	// Auto-load skills from default directory if it exists
+	defaultSkillsPath := ".minion/skills"
+	if _, err := os.Stat(defaultSkillsPath); err == nil {
+		_, _ = f.skillRegistry.LoadDirectory(defaultSkillsPath)
 	}
 
 	return f
@@ -573,6 +601,11 @@ func (f *FrameworkImpl) RefreshMCPTools(ctx context.Context, serverName string) 
 
 // Close closes the framework and releases resources
 func (f *FrameworkImpl) Close() error {
+	// Stop skill watching
+	if f.skillRegistry != nil {
+		_ = f.skillRegistry.StopWatching()
+	}
+
 	// Close MCP connections
 	if f.mcpClientManager != nil {
 		if err := f.mcpClientManager.Close(); err != nil {
@@ -586,4 +619,118 @@ func (f *FrameworkImpl) Close() error {
 	}
 
 	return nil
+}
+
+// RegisterSkill registers a skill in the skill registry
+func (f *FrameworkImpl) RegisterSkill(skill skills.Skill) error {
+	if f.skillRegistry == nil {
+		return fmt.Errorf("skill registry not initialized")
+	}
+	return f.skillRegistry.Register(skill)
+}
+
+// LoadSkillsFromDirectory loads all skills from a directory
+func (f *FrameworkImpl) LoadSkillsFromDirectory(path string) (int, error) {
+	if f.skillRegistry == nil {
+		return 0, fmt.Errorf("skill registry not initialized")
+	}
+	return f.skillRegistry.LoadDirectory(path)
+}
+
+// GetSkillsForAgent returns all skills available to an agent
+func (f *FrameworkImpl) GetSkillsForAgent(agent *models.Agent) []skills.Skill {
+	if f.skillRegistry == nil {
+		return nil
+	}
+	return f.skillRegistry.GetForAgent(agent)
+}
+
+// ExecuteSkill executes a skill by name
+func (f *FrameworkImpl) ExecuteSkill(ctx context.Context, skillName string, input *skills.SkillInput) (*skills.SkillOutput, error) {
+	if f.skillRegistry == nil {
+		return nil, fmt.Errorf("skill registry not initialized")
+	}
+
+	// Get the skill
+	skill, err := f.skillRegistry.Get(skillName)
+	if err != nil {
+		return nil, fmt.Errorf("skill not found: %w", err)
+	}
+
+	// Check if the agent can execute the skill
+	if input != nil && input.Agent != nil {
+		if !skill.CanExecute(input.Agent) {
+			return nil, fmt.Errorf("agent %s is not authorized to execute skill %s", input.Agent.ID, skillName)
+		}
+	}
+
+	// Resolve and execute dependencies first
+	deps, err := f.skillRegistry.GetDependencies(skillName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve dependencies: %w", err)
+	}
+
+	// Execute dependencies and collect results
+	depResults := make(map[string]*skills.SkillOutput)
+	for _, dep := range deps {
+		depInput := &skills.SkillInput{
+			Query:      input.Query,
+			Parameters: input.Parameters,
+			Context:    input.Context,
+			Agent:      input.Agent,
+		}
+
+		depOutput, err := dep.Execute(ctx, depInput)
+		if err != nil {
+			return nil, fmt.Errorf("dependency %s failed: %w", dep.Name(), err)
+		}
+
+		depResults[dep.Name()] = depOutput
+	}
+
+	// Add dependency results to input
+	if input == nil {
+		input = &skills.SkillInput{}
+	}
+	input.DependencyResults = depResults
+
+	// Execute the skill
+	return skill.Execute(ctx, input)
+}
+
+// ListSkills returns info about all registered skills
+func (f *FrameworkImpl) ListSkills() []skills.SkillInfo {
+	if f.skillRegistry == nil {
+		return nil
+	}
+	return f.skillRegistry.List()
+}
+
+// GetSkill retrieves a skill by name
+func (f *FrameworkImpl) GetSkill(name string) (skills.Skill, error) {
+	if f.skillRegistry == nil {
+		return nil, fmt.Errorf("skill registry not initialized")
+	}
+	return f.skillRegistry.Get(name)
+}
+
+// WatchSkillsDirectory starts watching a directory for skill changes
+func (f *FrameworkImpl) WatchSkillsDirectory(path string) error {
+	if f.skillRegistry == nil {
+		return fmt.Errorf("skill registry not initialized")
+	}
+	return f.skillRegistry.WatchDirectory(path)
+}
+
+// StopWatchingSkills stops all skill directory watchers
+func (f *FrameworkImpl) StopWatchingSkills() error {
+	if f.skillRegistry == nil {
+		return nil
+	}
+	return f.skillRegistry.StopWatching()
+}
+
+// GetSkillRegistry returns the underlying skill registry (for advanced usage)
+func (f *FrameworkImpl) GetSkillRegistry() *skills.InMemorySkillRegistry {
+	return f.skillRegistry
 }

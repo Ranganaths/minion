@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/Ranganaths/minion/models"
+	"github.com/Ranganaths/minion/skills"
 )
 
 // AgentExecutor defines the interface for agent execution
@@ -77,4 +78,16 @@ type Framework interface {
 	// Metrics
 	GetMetrics(ctx context.Context, agentID string) (*models.Metrics, error)
 	GetActivities(ctx context.Context, agentID string, limit int) ([]*models.Activity, error)
+
+	// Skill operations
+	RegisterSkill(skill skills.Skill) error
+	LoadSkillsFromDirectory(path string) (int, error)
+	GetSkillsForAgent(agent *models.Agent) []skills.Skill
+	ExecuteSkill(ctx context.Context, skillName string, input *skills.SkillInput) (*skills.SkillOutput, error)
+	ListSkills() []skills.SkillInfo
+	GetSkill(name string) (skills.Skill, error)
+
+	// Skill watching (hot-reload)
+	WatchSkillsDirectory(path string) error
+	StopWatchingSkills() error
 }

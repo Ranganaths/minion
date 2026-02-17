@@ -1,11 +1,63 @@
 # Binaries
 bin/
+*.bin
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
-minion
+
+# Go compiled executables (root level)
+/minion
+/basic
+/with_tools
+/custom_behavior
+/domain_tools
+/sales_agent
+/business_automation
+/llm_worker
+/tupleleap_example
+/multiagent-basic
+/multiagent-custom
+/multiagent-tracing
+/devops-automation
+/customer-support
+/sales-automation
+/chain-features
+/debug-timetravel
+/tracing
+/observability
+/evaluation
+/self-improving
+/a2a-server
+/agui-server
+
+# Go compiled executables (in examples)
+examples/basic/basic
+examples/with_tools/with_tools
+examples/custom_behavior/custom_behavior
+examples/domain_tools/domain_tools
+examples/sales_agent/sales_agent
+examples/business_automation/business_automation
+examples/llm_worker/llm_worker
+examples/tupleleap_example/tupleleap_example
+examples/multiagent-basic/multiagent-basic
+examples/multiagent-custom/multiagent-custom
+examples/multiagent-tracing/multiagent-tracing
+examples/devops-automation/devops-automation
+examples/customer-support/customer-support
+examples/sales-automation/sales-automation
+examples/chain-features/chain-features
+examples/debug-timetravel/debug-timetravel
+examples/tracing/tracing
+examples/observability/observability
+examples/evaluation/evaluation
+examples/self-improving/self-improving
+examples/a2a-server/a2a-server
+examples/agui-server/agui-server
+
+# Generic pattern for any Go executable in examples
+examples/*/main
 
 # Test artifacts
 *.test

@@ -157,6 +157,162 @@ type ChatResponse struct {
 	Model        string
 }
 
+// ToolUseProvider extends Provider with native tool/function calling capability.
+// Providers that support tool/function calling (OpenAI, Anthropic, Google, etc.)
+// should implement this interface. The interface is provider-agnostic and works
+// with any LLM that supports structured tool definitions and responses.
+type ToolUseProvider interface {
+	Provider
+
+	// GenerateWithTools generates a response that may include tool calls.
+	// The provider will return tool calls if the model decides to use tools.
+	// Different providers may have different native formats, but this interface
+	// normalizes them to a common structure.
+	GenerateWithTools(ctx context.Context, req *ToolUseRequest) (*ToolUseResponse, error)
+
+	// SupportsToolUse returns true if this provider supports native tool use.
+	SupportsToolUse() bool
+}
+
+// ToolUseRequest represents a request with tool definitions.
+type ToolUseRequest struct {
+	Messages    []Message        `json:"messages"`
+	Tools       []ToolDefinition `json:"tools"`
+	ToolChoice  *ToolChoice      `json:"tool_choice,omitempty"`
+	Temperature float64          `json:"temperature"`
+	MaxTokens   int              `json:"max_tokens"`
+	Model       string           `json:"model"`
+	System      string           `json:"system,omitempty"`
+}
+
+// Validate checks if the tool use request has valid parameters.
+func (r *ToolUseRequest) Validate() error {
+	if r.Model == "" {
+		return &ValidationError{Field: "Model", Message: "model name is required"}
+	}
+	if len(r.Messages) == 0 {
+		return &ValidationError{Field: "Messages", Message: "at least one message is required"}
+	}
+	if r.Temperature < 0 || r.Temperature > 2.0 {
+		return &ValidationError{Field: "Temperature", Message: "temperature must be between 0 and 2.0"}
+	}
+	if r.MaxTokens < 0 {
+		return &ValidationError{Field: "MaxTokens", Message: "max_tokens must be non-negative"}
+	}
+	// Validate tools
+	for i, tool := range r.Tools {
+		if tool.Name == "" {
+			return &ValidationError{Field: fmt.Sprintf("Tools[%d].Name", i), Message: "tool name is required"}
+		}
+	}
+	return nil
+}
+
+// WithDefaults returns a copy of the request with default values applied.
+func (r *ToolUseRequest) WithDefaults(defaultModel string, defaultMaxTokens int) *ToolUseRequest {
+	req := *r
+	if req.Model == "" {
+		req.Model = defaultModel
+	}
+	if req.MaxTokens == 0 {
+		req.MaxTokens = defaultMaxTokens
+	}
+	// Deep copy messages and tools
+	req.Messages = make([]Message, len(r.Messages))
+	copy(req.Messages, r.Messages)
+	req.Tools = make([]ToolDefinition, len(r.Tools))
+	copy(req.Tools, r.Tools)
+	return &req
+}
+
+// ToolDefinition defines a tool that the model can call.
+// This is a provider-agnostic format that can be converted to
+// provider-specific formats (OpenAI functions, Anthropic tools, etc.).
+type ToolDefinition struct {
+	// Name is the unique identifier for the tool
+	Name string `json:"name"`
+
+	// Description explains what the tool does (helps the model decide when to use it)
+	Description string `json:"description"`
+
+	// InputSchema defines the JSON Schema for the tool's parameters
+	// Uses standard JSON Schema format compatible with all major providers
+	InputSchema map[string]interface{} `json:"input_schema"`
+}
+
+// ToolChoice controls how the model uses tools.
+type ToolChoice struct {
+	// Type can be "auto", "any", "tool", or "none"
+	// - "auto": Model decides whether to use tools
+	// - "any": Model must use at least one tool
+	// - "tool": Model must use the specific tool named in Name
+	// - "none": Model should not use any tools
+	Type string `json:"type"`
+
+	// Name is required when Type is "tool"
+	Name string `json:"name,omitempty"`
+}
+
+// ToolUseResponse represents a response that may include tool calls.
+type ToolUseResponse struct {
+	// Content contains the text content of the response (if any)
+	Content string `json:"content,omitempty"`
+
+	// ToolUse contains the tool calls made by the model
+	ToolUse []ToolUse `json:"tool_use,omitempty"`
+
+	// StopReason indicates why the model stopped
+	// - "end_turn": Model finished naturally
+	// - "tool_use": Model wants to use a tool
+	// - "max_tokens": Hit token limit
+	// - "stop_sequence": Hit a stop sequence
+	StopReason string `json:"stop_reason"`
+
+	// TokensUsed is the total tokens used in this request
+	TokensUsed int `json:"tokens_used"`
+
+	// Model is the model that was used
+	Model string `json:"model"`
+}
+
+// ToolUse represents a tool call from the model.
+type ToolUse struct {
+	// ID is a unique identifier for this tool call
+	ID string `json:"id"`
+
+	// Name is the name of the tool to call
+	Name string `json:"name"`
+
+	// Input contains the arguments to pass to the tool
+	Input map[string]interface{} `json:"input"`
+}
+
+// ToolResultMessage creates a message containing tool results to send back to the model.
+type ToolResultMessage struct {
+	// ToolUseID is the ID of the tool call this is responding to
+	ToolUseID string `json:"tool_use_id"`
+
+	// Content is the result of the tool call
+	Content interface{} `json:"content"`
+
+	// IsError indicates if the tool call resulted in an error
+	IsError bool `json:"is_error,omitempty"`
+}
+
+// HasToolUse returns true if the response contains tool use blocks.
+func (r *ToolUseResponse) HasToolUse() bool {
+	return len(r.ToolUse) > 0
+}
+
+// ValidateToolUseRequest validates the request and applies defaults.
+func ValidateToolUseRequest(req *ToolUseRequest, defaultModel string, defaultMaxTokens int) (*ToolUseRequest, error) {
+	normalized := req.WithDefaults(defaultModel, defaultMaxTokens)
+	if err := normalized.Validate(); err != nil {
+		return nil, err
+	}
+	return normalized, nil
+}
+
 // ValidateAndNormalize validates the request and applies defaults.
 // This is a convenience function combining validation and defaults.
 func ValidateCompletionRequest(req *CompletionRequest, defaultModel string, defaultMaxTokens int) (*CompletionRequest, error) {
