@@ -315,6 +315,8 @@ Anthropic's Model Context Protocol for tool integration:
 
 ## Memory Systems (`memory/`)
 
+Minion provides a comprehensive memory architecture for agent context persistence. See [Agent Memory](AGENT_MEMORY.md) for detailed documentation.
+
 ### Buffer Memory
 Simple conversation history with configurable window size:
 ```go
@@ -338,6 +340,17 @@ memory := memory.NewKnowledgeGraphMemory(neo4jDriver)
 memory.AddEntity(ctx, entity)
 memory.AddRelation(ctx, from, relation, to)
 path := memory.FindPath(ctx, start, end)
+```
+
+### Execution Snapshots
+Point-in-time state capture for debugging and time-travel:
+```go
+store := snapshot.NewPostgresSnapshotStore(config)
+store.Save(ctx, &ExecutionSnapshot{
+    ExecutionID:    execID,
+    CheckpointType: CheckpointAgentStep,
+    SessionState:   sessionSnapshot,
+})
 ```
 
 ## Observability
@@ -533,5 +546,6 @@ Errors propagate through the execution chain with full context for debugging.
 
 - [Getting Started](GETTING_STARTED.md) - Installation and first agent
 - [API Reference](API_REFERENCE.md) - Complete API documentation
+- [Agent Memory](AGENT_MEMORY.md) - Memory architecture and storage options
 - [Protocols](PROTOCOLS.md) - A2A, AG-UI, MCP integration
 - [Examples](EXAMPLES.md) - Code examples for common use cases
