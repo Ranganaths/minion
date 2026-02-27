@@ -23,6 +23,7 @@ type SkillWatcher struct {
 	logger     Logger
 	debounce   time.Duration
 	events     chan watchEvent
+	stopOnce   sync.Once // Ensures Stop is only called once
 }
 
 // skillUnregistrar extends skillRegistrar with Unregister capability
@@ -260,8 +261,12 @@ func (w *SkillWatcher) handleRemove(path string) {
 
 // Stop stops the watcher
 func (w *SkillWatcher) Stop() error {
-	close(w.done)
-	return w.watcher.Close()
+	var err error
+	w.stopOnce.Do(func() {
+		close(w.done)
+		err = w.watcher.Close()
+	})
+	return err
 }
 
 // SetLogger sets a custom logger
