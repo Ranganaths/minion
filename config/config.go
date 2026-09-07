@@ -253,7 +253,6 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("database.port", 5432)
 	v.SetDefault("database.name", "minion")
 	v.SetDefault("database.user", "minion")
-	v.SetDefault("database.password", "minion")
 	v.SetDefault("database.sslmode", "disable")
 	v.SetDefault("database.max_connections", 25)
 	v.SetDefault("database.max_idle_connections", 5)
@@ -337,7 +336,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("api.timeout", "120s")
 	v.SetDefault("api.max_request_size", "10MB")
 	v.SetDefault("api.cors_enabled", true)
-	v.SetDefault("api.cors_origins", "*")
+	v.SetDefault("api.cors_origins", "")
 
 	// Health
 	v.SetDefault("health.enabled", true)

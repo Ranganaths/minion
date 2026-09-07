@@ -3,6 +3,7 @@ package api
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -32,9 +33,11 @@ type ServerConfig struct {
 	Addr           string
 	ReadTimeout    time.Duration
 	WriteTimeout   time.Duration
+	IdleTimeout    time.Duration
 	MaxHeaderBytes int
 	EnableCORS     bool
 	CORSOrigins    []string
+	TLSConfig      *tls.Config
 }
 
 // DefaultServerConfig returns sensible default configuration.
@@ -43,9 +46,10 @@ func DefaultServerConfig() ServerConfig {
 		Addr:           ":8080",
 		ReadTimeout:    30 * time.Second,
 		WriteTimeout:   30 * time.Second,
+		IdleTimeout:    120 * time.Second,
 		MaxHeaderBytes: 1 << 20, // 1MB
 		EnableCORS:     true,
-		CORSOrigins:    []string{"*"},
+		CORSOrigins:    []string{},
 	}
 }
 
@@ -106,7 +110,9 @@ func NewDebugServer(store snapshot.SnapshotStore, config ServerConfig) *DebugSer
 		Handler:        handler,
 		ReadTimeout:    config.ReadTimeout,
 		WriteTimeout:   config.WriteTimeout,
+		IdleTimeout:    config.IdleTimeout,
 		MaxHeaderBytes: config.MaxHeaderBytes,
+		TLSConfig:      config.TLSConfig,
 	}
 
 	return s
@@ -114,7 +120,15 @@ func NewDebugServer(store snapshot.SnapshotStore, config ServerConfig) *DebugSer
 
 // Start starts the server.
 func (s *DebugServer) Start() error {
+	if s.config.TLSConfig != nil {
+		return s.server.ListenAndServeTLS("", "")
+	}
 	return s.server.ListenAndServe()
+}
+
+// StartWithTLS starts the server with TLS using provided cert and key files.
+func (s *DebugServer) StartWithTLS(certFile, keyFile string) error {
+	return s.server.ListenAndServeTLS(certFile, keyFile)
 }
 
 // Shutdown gracefully shuts down the server.
@@ -126,18 +140,29 @@ func (s *DebugServer) Shutdown(ctx context.Context) error {
 
 func (s *DebugServer) corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		origin := "*"
-		if len(s.config.CORSOrigins) > 0 && s.config.CORSOrigins[0] != "*" {
-			origin = s.config.CORSOrigins[0]
+		if len(s.config.CORSOrigins) == 0 {
+			next.ServeHTTP(w, r)
+			return
 		}
 
-		w.Header().Set("Access-Control-Allow-Origin", origin)
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		origin := r.Header.Get("Origin")
+		allowed := false
+		for _, o := range s.config.CORSOrigins {
+			if o == origin || o == "*" {
+				allowed = true
+				break
+			}
+		}
 
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
+		if allowed {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
 		}
 
 		next.ServeHTTP(w, r)

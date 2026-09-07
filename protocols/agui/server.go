@@ -3,6 +3,7 @@ package agui
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -22,10 +23,11 @@ type Handler interface {
 
 // Server implements the AG-UI protocol HTTP server
 type Server struct {
-	mu      sync.RWMutex
-	handler Handler
-	config  ServerConfig
-	runs    map[string]*runState // runID -> state
+	mu       sync.RWMutex
+	handler  Handler
+	config   ServerConfig
+	runs     map[string]*runState // runID -> state
+	httpSrv  *http.Server
 }
 
 // runState tracks the state of a running request
@@ -58,6 +60,9 @@ type ServerConfig struct {
 
 	// AuthValidator validates authentication
 	AuthValidator func(token string) bool
+
+	// TLSConfig for HTTPS/TLS support (nil = no TLS)
+	TLSConfig *tls.Config
 }
 
 // DefaultServerConfig returns default configuration
@@ -284,7 +289,38 @@ func (s *Server) writeError(w http.ResponseWriter, message string, status int) {
 
 // ListenAndServe starts the server
 func (s *Server) ListenAndServe(addr string) error {
-	return http.ListenAndServe(addr, s.Handler())
+	if addr == "" {
+		addr = ":8080"
+	}
+	s.httpSrv = &http.Server{
+		Addr:    addr,
+		Handler: s.Handler(),
+		TLSConfig: s.config.TLSConfig,
+	}
+	if s.config.TLSConfig != nil {
+		return s.httpSrv.ListenAndServeTLS("", "")
+	}
+	return s.httpSrv.ListenAndServe()
+}
+
+// ListenAndServeTLS starts the server with TLS
+func (s *Server) ListenAndServeTLS(addr, certFile, keyFile string) error {
+	if addr == "" {
+		addr = ":8443"
+	}
+	s.httpSrv = &http.Server{
+		Addr:    addr,
+		Handler: s.Handler(),
+	}
+	return s.httpSrv.ListenAndServeTLS(certFile, keyFile)
+}
+
+// Shutdown gracefully shuts down the server
+func (s *Server) Shutdown(ctx context.Context) error {
+	if s.httpSrv != nil {
+		return s.httpSrv.Shutdown(ctx)
+	}
+	return nil
 }
 
 // GetRunState returns the state for a run

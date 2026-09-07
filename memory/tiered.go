@@ -42,7 +42,7 @@ type TieredMemoryManager struct {
 	running  bool
 
 	// Metrics
-	metrics TieredMemoryMetrics
+	metrics tieredMemoryMetricsInternal
 }
 
 // TieredMemoryConfig configures the tiered memory manager
@@ -80,16 +80,20 @@ func DefaultTieredMemoryConfig() TieredMemoryConfig {
 
 // TieredMemoryMetrics tracks memory tier metrics
 type TieredMemoryMetrics struct {
-	HotHits       int64
-	HotMisses     int64
-	WarmHits      int64
-	WarmMisses    int64
-	ColdHits      int64
-	ColdMisses    int64
-	Promotions    int64
-	Demotions     int64
-	Archivals     int64
-	mu            sync.Mutex
+	HotHits    int64
+	HotMisses  int64
+	WarmHits   int64
+	WarmMisses int64
+	ColdHits   int64
+	ColdMisses int64
+	Promotions int64
+	Demotions  int64
+	Archivals  int64
+}
+
+type tieredMemoryMetricsInternal struct {
+	TieredMemoryMetrics
+	mu sync.Mutex
 }
 
 // HotStore interface for hot tier storage (Redis-like)
@@ -595,7 +599,7 @@ func (m *TieredMemoryManager) runCompaction(ctx context.Context) {
 func (m *TieredMemoryManager) GetMetrics() TieredMemoryMetrics {
 	m.metrics.mu.Lock()
 	defer m.metrics.mu.Unlock()
-	return m.metrics
+	return m.metrics.TieredMemoryMetrics
 }
 
 // recordHit records a cache hit for a tier

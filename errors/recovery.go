@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"runtime/debug"
 	"sync"
+
+	"github.com/Ranganaths/minion/logging"
 )
 
 // PanicError represents a recovered panic.
@@ -28,10 +30,13 @@ func NewPanicError(value any) *PanicError {
 // RecoverFunc is a function that handles recovered panics.
 type RecoverFunc func(panicErr *PanicError)
 
-// DefaultRecoverFunc logs the panic using fmt.Println.
-// In production, replace this with proper logging.
+var defaultRecoveryLogger = logging.GetLogger().WithName("panic-recovery")
+
 var DefaultRecoverFunc RecoverFunc = func(panicErr *PanicError) {
-	fmt.Printf("recovered from panic: %v\n%s\n", panicErr.Value, panicErr.StackTrace)
+	defaultRecoveryLogger.Error(context.Background(), "recovered from panic",
+		logging.F("panic", panicErr.Value),
+		logging.F("stack", panicErr.StackTrace),
+	)
 }
 
 // Go runs a function in a goroutine with panic recovery.

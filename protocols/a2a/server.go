@@ -3,6 +3,7 @@ package a2a
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,6 +22,7 @@ type Server struct {
 	taskManager *TaskManager
 	config      ServerConfig
 	subscribers map[string][]chan TaskUpdate // taskID -> subscribers
+	httpSrv     *http.Server
 }
 
 // ServerConfig configures the A2A server
@@ -48,6 +50,9 @@ type ServerConfig struct {
 
 	// AuthValidator validates authentication
 	AuthValidator AuthValidator
+
+	// TLSConfig for HTTPS/TLS support (nil = no TLS)
+	TLSConfig *tls.Config
 }
 
 // AuthValidator validates authentication credentials
@@ -563,7 +568,38 @@ func (s *Server) writeError(w http.ResponseWriter, id any, code int, message str
 
 // ListenAndServe starts the A2A server
 func (s *Server) ListenAndServe(addr string) error {
-	return http.ListenAndServe(addr, s.Handler())
+	if addr == "" {
+		addr = ":8080"
+	}
+	s.httpSrv = &http.Server{
+		Addr:    addr,
+		Handler: s.Handler(),
+		TLSConfig: s.config.TLSConfig,
+	}
+	if s.config.TLSConfig != nil {
+		return s.httpSrv.ListenAndServeTLS("", "")
+	}
+	return s.httpSrv.ListenAndServe()
+}
+
+// ListenAndServeTLS starts the A2A server with TLS
+func (s *Server) ListenAndServeTLS(addr, certFile, keyFile string) error {
+	if addr == "" {
+		addr = ":8443"
+	}
+	s.httpSrv = &http.Server{
+		Addr:    addr,
+		Handler: s.Handler(),
+	}
+	return s.httpSrv.ListenAndServeTLS(certFile, keyFile)
+}
+
+// Shutdown gracefully shuts down the server
+func (s *Server) Shutdown(ctx context.Context) error {
+	if s.httpSrv != nil {
+		return s.httpSrv.Shutdown(ctx)
+	}
+	return nil
 }
 
 // SSEClient reads SSE events from a response body
